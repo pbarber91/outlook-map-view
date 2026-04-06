@@ -10,8 +10,8 @@
   "developer": {
     "name": "Outlook Map View",
     "websiteUrl": "https://outlook-map-view.vercel.app",
-    "privacyUrl": "https://outlook-map-view.vercel.app/privacy",
-    "termsOfUseUrl": "https://outlook-map-view.vercel.app/terms"
+    "privacyUrl": "https://outlook-map-view.vercel.app",
+    "termsOfUseUrl": "https://outlook-map-view.vercel.app"
   },
   "name": {
     "short": "Outlook Map View",

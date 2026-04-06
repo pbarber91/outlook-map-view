@@ -21,7 +21,7 @@ function getBaseUrl(isDev) {
     return PROD_BASE_URL;
   }
 
-  return "https://your-addin-domain.example.com";
+  return "https://outlook-map-view.vercel.app";
 }
 
 function getValidDomain(baseUrl) {
