@@ -9,9 +9,9 @@
   },
   "developer": {
     "name": "Outlook Map View",
-    "websiteUrl": "__APP_BASE_URL__",
-    "privacyUrl": "__APP_BASE_URL__/privacy",
-    "termsOfUseUrl": "__APP_BASE_URL__/terms"
+    "websiteUrl": "https://outlook-map-view.vercel.app",
+    "privacyUrl": "https://outlook-map-view.vercel.app",
+    "termsOfUseUrl": "https://outlook-map-view.vercel.app"
   },
   "name": {
     "short": "Outlook Map View",
@@ -27,7 +27,7 @@
   },
   "accentColor": "#230201",
   "validDomains": [
-    "__APP_VALID_DOMAIN__"
+    "outlook-map-view.vercel.app"
   ],
   "authorization": {
     "permissions": {
@@ -65,7 +65,7 @@
           "id": "TaskPaneRuntime",
           "type": "general",
           "code": {
-            "page": "__APP_BASE_URL__/taskpane.html"
+            "page": "https://outlook-map-view.vercel.app/taskpane.html"
           },
           "lifetime": "short",
           "actions": [
@@ -81,8 +81,8 @@
           "id": "CommandsRuntime",
           "type": "general",
           "code": {
-            "page": "__APP_BASE_URL__/commands.html",
-            "script": "__APP_BASE_URL__/commands.js"
+            "page": "https://outlook-map-view.vercel.app/commands.html",
+            "script": "https://outlook-map-view.vercel.app/commands.js"
           },
           "lifetime": "short",
           "actions": [
@@ -109,15 +109,15 @@
                   "icons": [
                     {
                       "size": 16,
-                      "url": "__APP_BASE_URL__/assets/icon-16.png"
+                      "url": "https://outlook-map-view.vercel.app/assets/icon-16.png"
                     },
                     {
                       "size": 32,
-                      "url": "__APP_BASE_URL__/assets/icon-32.png"
+                      "url": "https://outlook-map-view.vercel.app/assets/icon-32.png"
                     },
                     {
                       "size": 80,
-                      "url": "__APP_BASE_URL__/assets/icon-80.png"
+                      "url": "https://outlook-map-view.vercel.app/assets/icon-80.png"
                     }
                   ],
                   "controls": [
@@ -128,15 +128,15 @@
                       "icons": [
                         {
                           "size": 16,
-                          "url": "__APP_BASE_URL__/assets/icon-16.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-16.png"
                         },
                         {
                           "size": 32,
-                          "url": "__APP_BASE_URL__/assets/icon-32.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-32.png"
                         },
                         {
                           "size": 80,
-                          "url": "__APP_BASE_URL__/assets/icon-80.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-80.png"
                         }
                       ],
                       "supertip": {
@@ -152,15 +152,15 @@
                       "icons": [
                         {
                           "size": 16,
-                          "url": "__APP_BASE_URL__/assets/icon-16.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-16.png"
                         },
                         {
                           "size": 32,
-                          "url": "__APP_BASE_URL__/assets/icon-32.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-32.png"
                         },
                         {
                           "size": 80,
-                          "url": "__APP_BASE_URL__/assets/icon-80.png"
+                          "url": "https://outlook-map-view.vercel.app/assets/icon-80.png"
                         }
                       ],
                       "supertip": {

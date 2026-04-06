@@ -12,6 +12,7 @@ declare const __AZURE_CLIENT_ID__: string;
 
 const fallbackClientId = "45f4ed01-b835-4aa3-b143-8606bcb85d60";
 const GRAPH_SCOPES = ["User.Read", "Calendars.Read"];
+const TENANT_AUTHORITY = "https://login.microsoftonline.com/ac9acd2b-ed50-420b-947a-1ff74e12f31a";
 
 function getClientId(): string {
   const value =
@@ -29,7 +30,7 @@ async function initMsal(): Promise<IPublicClientApplication> {
     msalInstance = await createNestablePublicClientApplication({
       auth: {
         clientId: getClientId(),
-        authority: "https://login.microsoftonline.com/common",
+        authority: TENANT_AUTHORITY,
       },
       cache: {
         cacheLocation: "localStorage",
