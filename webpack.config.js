@@ -66,6 +66,7 @@ module.exports = async (env, options) => {
         dependOn: "react",
       },
       commands: "./src/commands/commands.ts",
+      auth: "./src/taskpane/auth.ts",
     },
     output: {
       clean: true,
@@ -116,15 +117,16 @@ module.exports = async (env, options) => {
         template: "./src/commands/commands.html",
         chunks: ["polyfill", "commands"],
       }),
+      new HtmlWebpackPlugin({
+        filename: "auth.html",
+        template: "./src/taskpane/auth.html",
+        chunks: ["polyfill", "auth"],
+      }),
       new CopyWebpackPlugin({
         patterns: [
           {
             from: "assets/*",
             to: "assets/[name][ext][query]",
-          },
-          {
-            from: "./src/taskpane/auth.html",
-            to: "auth.html",
           },
           {
             from: "manifest*.json",
