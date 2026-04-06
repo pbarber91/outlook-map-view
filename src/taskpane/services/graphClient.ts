@@ -14,6 +14,7 @@ declare const __AZURE_TENANT_ID__: string;
 
 const fallbackClientId = "45f4ed01-b835-4aa3-b143-8606bcb85d60";
 const GRAPH_SCOPES = ["User.Read", "Calendars.Read"];
+const AUTH_TIMEOUT_MS = 30000;
 
 let msalInstance: IPublicClientApplication | undefined;
 let accessTokenPromise: Promise<string> | null = null;
@@ -39,6 +40,22 @@ function getTenantAuthority(): string {
 
 function getRedirectUri(): string {
   return `${window.location.origin}/auth.html`;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
 }
 
 async function initMsal(): Promise<IPublicClientApplication> {
@@ -69,15 +86,14 @@ function getPreferredAccount(app: IPublicClientApplication): AccountInfo | null 
 }
 
 async function completePendingRedirect(app: IPublicClientApplication): Promise<void> {
-  const redirectResult = await app.handleRedirectPromise();
+  const redirectResult = await withTimeout(
+    app.handleRedirectPromise(),
+    AUTH_TIMEOUT_MS,
+    "Authentication redirect did not complete in time."
+  );
 
   if (redirectResult?.account) {
     app.setActiveAccount(redirectResult.account);
-
-    if (window.location.pathname.endsWith("/auth.html")) {
-      window.close();
-    }
-
     return;
   }
 
@@ -107,29 +123,38 @@ async function runInteractiveRequest(
   }
 
   interactivePromise = (async () => {
-    const currentAccount = getPreferredAccount(app);
+    let account = getPreferredAccount(app);
 
-    if (!currentAccount) {
-      const loginResult = await app.loginPopup({
-        scopes: GRAPH_SCOPES,
-        redirectUri: getRedirectUri(),
-      });
+    if (!account) {
+      const loginResult = await withTimeout(
+        app.loginPopup({
+          scopes: GRAPH_SCOPES,
+          redirectUri: getRedirectUri(),
+        }),
+        AUTH_TIMEOUT_MS,
+        "Sign-in popup did not complete in time."
+      );
 
       if (loginResult.account) {
         app.setActiveAccount(loginResult.account);
       }
+
+      account = getPreferredAccount(app);
     }
 
-    const account = getPreferredAccount(app);
     if (!account) {
-      throw new Error("Authentication completed, but no account was returned.");
+      throw new Error("Sign-in completed, but no account was returned.");
     }
 
-    const tokenResult = await app.acquireTokenPopup({
-      scopes: GRAPH_SCOPES,
-      account,
-      redirectUri: getRedirectUri(),
-    });
+    const tokenResult = await withTimeout(
+      app.acquireTokenPopup({
+        scopes: GRAPH_SCOPES,
+        account,
+        redirectUri: getRedirectUri(),
+      }),
+      AUTH_TIMEOUT_MS,
+      "Token popup did not complete in time."
+    );
 
     if (tokenResult.account) {
       app.setActiveAccount(tokenResult.account);
@@ -153,11 +178,15 @@ async function getAccessTokenInternal(): Promise<string> {
 
   if (account) {
     try {
-      const silentResult = await app.acquireTokenSilent({
-        scopes: GRAPH_SCOPES,
-        account,
-        redirectUri: getRedirectUri(),
-      });
+      const silentResult = await withTimeout(
+        app.acquireTokenSilent({
+          scopes: GRAPH_SCOPES,
+          account,
+          redirectUri: getRedirectUri(),
+        }),
+        AUTH_TIMEOUT_MS,
+        "Silent token acquisition timed out."
+      );
 
       if (silentResult.account) {
         app.setActiveAccount(silentResult.account);
@@ -181,7 +210,7 @@ async function getAccessTokenInternal(): Promise<string> {
     }
 
     if (error instanceof BrowserAuthError && error.errorCode === "interaction_in_progress") {
-      throw new Error("Sign-in is already in progress. Please wait for the sign-in window to complete.");
+      throw new Error("Sign-in is already in progress. Please wait for the sign-in window to finish.");
     }
 
     throw error;

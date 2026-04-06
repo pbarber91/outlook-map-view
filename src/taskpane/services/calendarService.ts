@@ -52,6 +52,23 @@ type GraphCalendarViewResponse = {
 const PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 const MAX_EVENTS = 5000;
+const GRAPH_TIMEOUT_MS = 30000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 function safeToIso(dateTime?: string): string {
   if (!dateTime) {
@@ -168,20 +185,28 @@ async function getCalendarViewPage(
   const client = await getGraphClient();
 
   if (nextLink) {
-    return (await client.api(nextLink).get()) as GraphCalendarViewResponse;
+    return withTimeout(
+      client.api(nextLink).get() as Promise<GraphCalendarViewResponse>,
+      GRAPH_TIMEOUT_MS,
+      "Calendar request timed out."
+    );
   }
 
-  return (await client
-    .api("/me/calendarView")
-    .query({
-      startDateTime: startIso,
-      endDateTime: endIso,
-      $top: String(PAGE_SIZE),
-      $select:
-        "id,subject,start,end,location,locations,categories,webLink,isAllDay,onlineMeeting,onlineMeetingUrl,attendees",
-      $orderby: "start/dateTime",
-    })
-    .get()) as GraphCalendarViewResponse;
+  return withTimeout(
+    client
+      .api("/me/calendarView")
+      .query({
+        startDateTime: startIso,
+        endDateTime: endIso,
+        $top: String(PAGE_SIZE),
+        $select:
+          "id,subject,start,end,location,locations,categories,webLink,isAllDay,onlineMeeting,onlineMeetingUrl,attendees",
+        $orderby: "start/dateTime",
+      })
+      .get() as Promise<GraphCalendarViewResponse>,
+    GRAPH_TIMEOUT_MS,
+    "Calendar request timed out."
+  );
 }
 
 export async function getCalendarEventsForRange(
