@@ -1,0 +1,1 @@
+{"version":3,"file":"commands.js","mappings":"AAEAA,OAAOC,QAAQ,WACb","sources":["webpack://office-addin-taskpane-react/./src/commands/commands.ts"],"sourcesContent":["/* global Office */\n\nOffice.onReady(() => {\n  // Intentionally blank.\n});"],"names":["Office","onReady"],"sourceRoot":""}

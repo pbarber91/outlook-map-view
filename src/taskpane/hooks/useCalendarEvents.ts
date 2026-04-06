@@ -62,7 +62,6 @@ export function useCalendarEvents(filters: FilterState, refreshKey: number) {
         const result = await getCalendarEventsForRange(
           range.startIso,
           range.endIso,
-          selectedCalendars
         );
 
         if (!active) return;

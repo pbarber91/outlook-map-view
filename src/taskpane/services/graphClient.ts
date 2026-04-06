@@ -11,6 +11,7 @@ import "isomorphic-fetch";
 declare const __AZURE_CLIENT_ID__: string;
 
 const fallbackClientId = "45f4ed01-b835-4aa3-b143-8606bcb85d60";
+const GRAPH_SCOPES = ["User.Read", "Calendars.Read"];
 
 function getClientId(): string {
   const value =
@@ -49,17 +50,43 @@ function getPreferredAccount(app: IPublicClientApplication): AccountInfo | null 
   return accounts.length > 0 ? accounts[0] : null;
 }
 
+async function setActiveAccountFromRedirect(app: IPublicClientApplication): Promise<void> {
+  const redirectResult = await app.handleRedirectPromise();
+
+  if (redirectResult?.account) {
+    app.setActiveAccount(redirectResult.account);
+    return;
+  }
+
+  const existing = getPreferredAccount(app);
+  if (existing) {
+    app.setActiveAccount(existing);
+  }
+}
+
 async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> {
   const app = await initMsal();
+  await setActiveAccountFromRedirect(app);
+
   const account = getPreferredAccount(app);
 
-  const tokenRequest = {
-    scopes: ["User.Read", "Calendars.Read"],
-    account: account ?? undefined,
-  };
+  if (!account) {
+    const popupResult = await app.acquireTokenPopup({
+      scopes: GRAPH_SCOPES,
+    });
+
+    if (popupResult.account) {
+      app.setActiveAccount(popupResult.account);
+    }
+
+    return popupResult;
+  }
 
   try {
-    const silentResult = await app.acquireTokenSilent(tokenRequest);
+    const silentResult = await app.acquireTokenSilent({
+      scopes: GRAPH_SCOPES,
+      account,
+    });
 
     if (silentResult.account) {
       app.setActiveAccount(silentResult.account);
@@ -69,7 +96,7 @@ async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> 
   } catch (error) {
     if (error instanceof InteractionRequiredAuthError) {
       const popupResult = await app.acquireTokenPopup({
-        scopes: ["User.Read", "Calendars.Read"],
+        scopes: GRAPH_SCOPES,
       });
 
       if (popupResult.account) {
@@ -86,6 +113,15 @@ async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> 
 async function getAccessToken(): Promise<string> {
   const result = await acquireSilentOrInteractiveToken();
   return result.accessToken;
+}
+
+export async function completeRedirectIfNeeded(): Promise<void> {
+  const app = await initMsal();
+  await setActiveAccountFromRedirect(app);
+}
+
+export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {
+  await acquireSilentOrInteractiveToken();
 }
 
 export async function getGraphClient(): Promise<Client> {
