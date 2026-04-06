@@ -18,7 +18,7 @@ const AUTH_TIMEOUT_MS = 30000;
 
 let msalInstance: IPublicClientApplication | undefined;
 let accessTokenPromise: Promise<string> | null = null;
-let interactivePromise: Promise<AuthenticationResult> | null = null;
+let interactivePromise: Promise<void> | null = null;
 
 function getClientId(): string {
   const value =
@@ -115,18 +115,78 @@ function isInteractionInProgressError(error: unknown): boolean {
   );
 }
 
-async function runInteractiveRequest(
-  app: IPublicClientApplication
-): Promise<AuthenticationResult> {
+async function ensureSignedIn(app: IPublicClientApplication): Promise<void> {
+  const existing = getPreferredAccount(app);
+  if (existing) {
+    app.setActiveAccount(existing);
+    return;
+  }
+
   if (interactivePromise) {
     return interactivePromise;
   }
 
   interactivePromise = (async () => {
-    let account = getPreferredAccount(app);
+    const loginResult = await withTimeout(
+      app.loginPopup({
+        scopes: GRAPH_SCOPES,
+        redirectUri: getRedirectUri(),
+      }),
+      AUTH_TIMEOUT_MS,
+      "Sign-in popup did not complete in time."
+    );
 
-    if (!account) {
-      const loginResult = await withTimeout(
+    if (loginResult.account) {
+      app.setActiveAccount(loginResult.account);
+    }
+  })();
+
+  try {
+    await interactivePromise;
+  } finally {
+    interactivePromise = null;
+  }
+}
+
+async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication): Promise<AuthenticationResult> {
+  const account = getPreferredAccount(app);
+
+  if (!account) {
+    await ensureSignedIn(app);
+  }
+
+  const resolvedAccount = getPreferredAccount(app);
+  if (!resolvedAccount) {
+    throw new Error("Sign-in completed, but no account was returned.");
+  }
+
+  try {
+    const silentResult = await withTimeout(
+      app.acquireTokenSilent({
+        scopes: GRAPH_SCOPES,
+        account: resolvedAccount,
+        redirectUri: getRedirectUri(),
+      }),
+      AUTH_TIMEOUT_MS,
+      "Silent token acquisition timed out."
+    );
+
+    if (silentResult.account) {
+      app.setActiveAccount(silentResult.account);
+    }
+
+    return silentResult;
+  } catch (error) {
+    if (!(error instanceof InteractionRequiredAuthError)) {
+      throw error;
+    }
+  }
+
+  if (interactivePromise) {
+    await interactivePromise;
+  } else {
+    interactivePromise = (async () => {
+      const refreshed = await withTimeout(
         app.loginPopup({
           scopes: GRAPH_SCOPES,
           redirectUri: getRedirectUri(),
@@ -135,82 +195,54 @@ async function runInteractiveRequest(
         "Sign-in popup did not complete in time."
       );
 
-      if (loginResult.account) {
-        app.setActiveAccount(loginResult.account);
+      if (refreshed.account) {
+        app.setActiveAccount(refreshed.account);
       }
+    })();
 
-      account = getPreferredAccount(app);
+    try {
+      await interactivePromise;
+    } finally {
+      interactivePromise = null;
     }
-
-    if (!account) {
-      throw new Error("Sign-in completed, but no account was returned.");
-    }
-
-    const tokenResult = await withTimeout(
-      app.acquireTokenPopup({
-        scopes: GRAPH_SCOPES,
-        account,
-        redirectUri: getRedirectUri(),
-      }),
-      AUTH_TIMEOUT_MS,
-      "Token popup did not complete in time."
-    );
-
-    if (tokenResult.account) {
-      app.setActiveAccount(tokenResult.account);
-    }
-
-    return tokenResult;
-  })();
-
-  try {
-    return await interactivePromise;
-  } finally {
-    interactivePromise = null;
   }
+
+  const retryAccount = getPreferredAccount(app);
+  if (!retryAccount) {
+    throw new Error("Authentication completed, but no account is available.");
+  }
+
+  const retrySilent = await withTimeout(
+    app.acquireTokenSilent({
+      scopes: GRAPH_SCOPES,
+      account: retryAccount,
+      redirectUri: getRedirectUri(),
+    }),
+    AUTH_TIMEOUT_MS,
+    "Silent token acquisition timed out after sign-in."
+  );
+
+  if (retrySilent.account) {
+    app.setActiveAccount(retrySilent.account);
+  }
+
+  return retrySilent;
 }
 
 async function getAccessTokenInternal(): Promise<string> {
   const app = await initMsal();
   await completePendingRedirect(app);
 
-  const account = getPreferredAccount(app);
-
-  if (account) {
-    try {
-      const silentResult = await withTimeout(
-        app.acquireTokenSilent({
-          scopes: GRAPH_SCOPES,
-          account,
-          redirectUri: getRedirectUri(),
-        }),
-        AUTH_TIMEOUT_MS,
-        "Silent token acquisition timed out."
-      );
-
-      if (silentResult.account) {
-        app.setActiveAccount(silentResult.account);
-      }
-
-      return silentResult.accessToken;
-    } catch (error) {
-      if (!(error instanceof InteractionRequiredAuthError)) {
-        throw error;
-      }
-    }
-  }
-
   try {
-    const interactiveResult = await runInteractiveRequest(app);
-    return interactiveResult.accessToken;
+    const result = await acquireTokenSilentlyOrInteractive(app);
+    return result.accessToken;
   } catch (error) {
-    if (isInteractionInProgressError(error) && interactivePromise) {
-      const result = await interactivePromise;
-      return result.accessToken;
+    if (isInteractionInProgressError(error)) {
+      throw new Error("Sign-in is already in progress. Close any old sign-in popups, then refresh and try again.");
     }
 
     if (error instanceof BrowserAuthError && error.errorCode === "interaction_in_progress") {
-      throw new Error("Sign-in is already in progress. Please wait for the sign-in window to finish.");
+      throw new Error("Sign-in is already in progress. Close any old sign-in popups, then refresh and try again.");
     }
 
     throw error;
