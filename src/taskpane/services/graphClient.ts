@@ -9,10 +9,10 @@ import { Client } from "@microsoft/microsoft-graph-client";
 import "isomorphic-fetch";
 
 declare const __AZURE_CLIENT_ID__: string;
+declare const __AZURE_TENANT_ID__: string;
 
 const fallbackClientId = "45f4ed01-b835-4aa3-b143-8606bcb85d60";
 const GRAPH_SCOPES = ["User.Read", "Calendars.Read"];
-const TENANT_AUTHORITY = "https://login.microsoftonline.com/ac9acd2b-ed50-420b-947a-1ff74e12f31a";
 
 function getClientId(): string {
   const value =
@@ -23,6 +23,19 @@ function getClientId(): string {
   return value;
 }
 
+function getTenantAuthority(): string {
+  const tenant =
+    typeof __AZURE_TENANT_ID__ === "string" && __AZURE_TENANT_ID__.trim().length > 0
+      ? __AZURE_TENANT_ID__.trim()
+      : "common";
+
+  return `https://login.microsoftonline.com/${tenant}`;
+}
+
+function getRedirectUri(): string {
+  return `${window.location.origin}/auth.html`;
+}
+
 let msalInstance: IPublicClientApplication | undefined;
 
 async function initMsal(): Promise<IPublicClientApplication> {
@@ -30,7 +43,8 @@ async function initMsal(): Promise<IPublicClientApplication> {
     msalInstance = await createNestablePublicClientApplication({
       auth: {
         clientId: getClientId(),
-        authority: TENANT_AUTHORITY,
+        authority: getTenantAuthority(),
+        redirectUri: getRedirectUri(),
       },
       cache: {
         cacheLocation: "localStorage",
@@ -74,6 +88,7 @@ async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> 
   if (!account) {
     const popupResult = await app.acquireTokenPopup({
       scopes: GRAPH_SCOPES,
+      redirectUri: getRedirectUri(),
     });
 
     if (popupResult.account) {
@@ -87,6 +102,7 @@ async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> 
     const silentResult = await app.acquireTokenSilent({
       scopes: GRAPH_SCOPES,
       account,
+      redirectUri: getRedirectUri(),
     });
 
     if (silentResult.account) {
@@ -98,6 +114,7 @@ async function acquireSilentOrInteractiveToken(): Promise<AuthenticationResult> 
     if (error instanceof InteractionRequiredAuthError) {
       const popupResult = await app.acquireTokenPopup({
         scopes: GRAPH_SCOPES,
+        redirectUri: getRedirectUri(),
       });
 
       if (popupResult.account) {

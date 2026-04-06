@@ -11,6 +11,7 @@ const DEV_BASE_URL = "https://localhost:3000";
 const PROD_BASE_URL = (process.env.APP_BASE_URL || "").replace(/\/+$/, "");
 const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN || "";
 const AZURE_CLIENT_ID = process.env.AZURE_CLIENT_ID || "";
+const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID || "";
 
 function getBaseUrl(isDev) {
   if (isDev) {
@@ -122,6 +123,10 @@ module.exports = async (env, options) => {
             to: "assets/[name][ext][query]",
           },
           {
+            from: "./src/taskpane/auth.html",
+            to: "auth.html",
+          },
+          {
             from: "manifest*.json",
             to: "[name][ext]",
             transform(content) {
@@ -137,6 +142,7 @@ module.exports = async (env, options) => {
       new webpack.DefinePlugin({
         __MAPBOX_ACCESS_TOKEN__: JSON.stringify(MAPBOX_ACCESS_TOKEN),
         __AZURE_CLIENT_ID__: JSON.stringify(AZURE_CLIENT_ID),
+        __AZURE_TENANT_ID__: JSON.stringify(AZURE_TENANT_ID),
       }),
     ],
     devServer: {
