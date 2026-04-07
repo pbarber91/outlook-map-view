@@ -12,7 +12,6 @@ type EventMapProps = {
   onSelectEvent: (eventId: string) => void;
   routeGeometry?: RouteGeometry | null;
   showRouteOverlay?: boolean;
-  standalone?: boolean;
 };
 
 type MarkerEntry = {
@@ -123,7 +122,6 @@ export default function EventMap({
   onSelectEvent,
   routeGeometry = null,
   showRouteOverlay = true,
-  standalone = false,
 }: EventMapProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<mapboxgl.Map | null>(null);
@@ -182,13 +180,13 @@ export default function EventMap({
       const color = getCategoryColor(primaryCategory);
 
       const popup = new mapboxgl.Popup({ offset: 18 }).setHTML(`
-        <div style="font-family: Arial, Helvetica, sans-serif; min-width: 220px;">
+        <div style="font-family: Arial, Helvetica, sans-serif; min-width: 220px; color: #0f172a; background: #ffffff;">
           <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #64748b;">Stop ${index + 1}</div>
-          <div style="font-weight: 700; margin-bottom: 6px;">${escapeHtml(event.subject)}</div>
-          <div style="font-size: 12px; margin-bottom: 4px;">${escapeHtml(
+          <div style="font-weight: 700; margin-bottom: 6px; color: #0f172a;">${escapeHtml(event.subject)}</div>
+          <div style="font-size: 12px; margin-bottom: 4px; color: #334155;">${escapeHtml(
             formatDateRange(event.startIso, event.endIso)
           )}</div>
-          <div style="font-size: 12px; margin-bottom: 8px;">${escapeHtml(event.addressText ?? "")}</div>
+          <div style="font-size: 12px; margin-bottom: 8px; color: #334155;">${escapeHtml(event.addressText ?? "")}</div>
           <div style="font-size: 12px; color: ${color.text};">${escapeHtml(primaryCategory || "Uncategorized")}</div>
         </div>
       `);
@@ -224,9 +222,9 @@ export default function EventMap({
         onlyMarker.marker.togglePopup();
       }
     } else if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, { padding: standalone ? 90 : 60, maxZoom: 13 });
+      map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
     }
-  }, [events, selectedEventId, onSelectEvent, standalone]);
+  }, [events, selectedEventId, onSelectEvent]);
 
   React.useEffect((): void => {
     const map = mapRef.current;
@@ -285,8 +283,7 @@ export default function EventMap({
         ref={containerRef}
         style={{
           width: "100%",
-          height: standalone ? "calc(100vh - 270px)" : 700,
-          minHeight: standalone ? 820 : 700,
+          height: 420,
           borderRadius: 8,
           overflow: "hidden",
           background: "#e5e7eb",

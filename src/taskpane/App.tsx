@@ -1498,7 +1498,7 @@ export default function App() {
                         border: `1px solid ${theme.shellBorder}`,
                         borderRadius: 12,
                         padding: 14,
-                        background: "#fcfdff",
+                        background: theme.panelBg,
                       }}
                     >
                       <div style={{ fontWeight: 700, color: theme.text, marginBottom: 8 }}>{technician}</div>
@@ -1529,7 +1529,7 @@ export default function App() {
                   marginBottom: 12,
                   padding: 10,
                   borderRadius: 10,
-                  background: theme.appBg,
+                  background: theme.panelSoftBg,
                   border: `1px solid ${theme.shellBorder}`,
                   color: theme.textMuted,
                   fontSize: 12,
@@ -1700,6 +1700,7 @@ export default function App() {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="homeOffice">Home office</option>
@@ -1722,6 +1723,7 @@ export default function App() {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="lastStop">End at last inspection</option>
