@@ -138,7 +138,7 @@ function getDayKeyFromIso(iso: string): string | null {
 function getDefaultDayRouteSetting(): DayRouteSetting {
   return {
     startMode: "homeOffice",
-    endMode: "lastStop",
+    endMode: "returnOffice",
   };
 }
 
