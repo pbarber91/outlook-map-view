@@ -284,7 +284,39 @@ function buildStaticMapUrl(
     .map((event) => `pin-s+2563eb(${event.longitude},${event.latitude})`)
     .join(",");
 
-  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/auto/760x320?padding=36&access_token=${encodeURIComponent(
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+
+  events.forEach((event) => {
+    minLng = Math.min(minLng, event.longitude);
+    maxLng = Math.max(maxLng, event.longitude);
+    minLat = Math.min(minLat, event.latitude);
+    maxLat = Math.max(maxLat, event.latitude);
+  });
+
+  if (
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(maxLng) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLat)
+  ) {
+    return null;
+  }
+
+  const lngSpan = Math.max(0.12, maxLng - minLng);
+  const latSpan = Math.max(0.12, maxLat - minLat);
+
+  const lngPadding = Math.max(0.35, lngSpan * 1.35);
+  const latPadding = Math.max(0.28, latSpan * 1.35);
+
+  const west = minLng - lngPadding;
+  const south = minLat - latPadding;
+  const east = maxLng + lngPadding;
+  const north = maxLat + latPadding;
+
+  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/[${west},${south},${east},${north}]/900x460?padding=24&access_token=${encodeURIComponent(
     token
   )}`;
 }
@@ -1001,16 +1033,17 @@ export default function App() {
               margin: 16px 0 18px 0;
               page-break-inside: avoid;
             }
-            .snapshot {
+          .snapshot {
               width: 100%;
-              max-width: 760px;
-              max-height: 320px;
-              object-fit: cover;
+              max-width: 900px;
+              max-height: 460px;
+              object-fit: contain;
               border: 1px solid #dbe2ea;
               border-radius: 12px;
               display: block;
               margin: 0 auto;
               box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+              background: #ffffff;
             }
             .snapshot-caption {
               margin-top: 8px;
