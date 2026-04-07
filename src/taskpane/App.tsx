@@ -57,6 +57,54 @@ type AdjustedRoutePreview = RoutePreview & {
   lastEventId: string | null;
 };
 
+type ThemeMode = "light" | "dark";
+
+function getTheme(mode: ThemeMode) {
+  if (mode === "dark") {
+    return {
+      appBg: "#020617",
+      shellBg: "linear-gradient(135deg, #0f172a 0%, #111827 100%)",
+      shellBorder: "#334155",
+      panelBg: "#111827",
+      panelAltBg: "#0b1220",
+      panelSoftBg: "#0f172a",
+      panelSelectedBg: "rgba(37,99,235,0.18)",
+      panelSelectedBorder: "#60a5fa",
+      border: "#334155",
+      borderSoft: "#475569",
+      text: "#f8fafc",
+      textMuted: "#94a3b8",
+      textSoft: "#cbd5e1",
+      controlBg: "#111827",
+      chipBg: "#0f172a",
+      chipBorder: "#334155",
+      emptyBg: "#0f172a",
+      shadow: "0 16px 36px rgba(2, 6, 23, 0.32)",
+    };
+  }
+
+  return {
+    appBg: "#f8fafc",
+    shellBg: "linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)",
+    shellBorder: "#dbe2ea",
+    panelBg: "#ffffff",
+    panelAltBg: "#ffffff",
+    panelSoftBg: "#f8fafc",
+    panelSelectedBg: "#eff6ff",
+    panelSelectedBorder: "#2563eb",
+    border: "#d1d5db",
+    borderSoft: "#cbd5e1",
+    text: "#0f172a",
+    textMuted: "#64748b",
+    textSoft: "#475569",
+    controlBg: "#ffffff",
+    chipBg: "#ffffff",
+    chipBorder: "#dbe2ea",
+    emptyBg: "#f8fafc",
+    shadow: "0 2px 8px rgba(15,23,42,0.04)",
+  };
+}
+
 const initialFilters: FilterState = {
   preset: "thisWeek",
   startDate: "",
@@ -90,7 +138,7 @@ function getDayKeyFromIso(iso: string): string | null {
 function getDefaultDayRouteSetting(): DayRouteSetting {
   return {
     startMode: "homeOffice",
-    endMode: "lastStop",
+    endMode: "returnOffice",
   };
 }
 
@@ -236,31 +284,7 @@ function buildStaticMapUrl(
     .map((event) => `pin-s+2563eb(${event.longitude},${event.latitude})`)
     .join(",");
 
-  const lngs = events.map((event) => event.longitude);
-  const lats = events.map((event) => event.latitude);
-
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-
-  const centerLng = (minLng + maxLng) / 2;
-  const centerLat = (minLat + maxLat) / 2;
-
-  const lngSpan = Math.max(maxLng - minLng, 0.18);
-  const latSpan = Math.max(maxLat - minLat, 0.18);
-
-  const expandedLngSpan = Math.max(lngSpan * 2.4, 3.8);
-  const expandedLatSpan = Math.max(latSpan * 2.4, 2.8);
-
-  const bboxMinLng = Math.max(-180, centerLng - expandedLngSpan / 2);
-  const bboxMaxLng = Math.min(180, centerLng + expandedLngSpan / 2);
-  const bboxMinLat = Math.max(-85, centerLat - expandedLatSpan / 2);
-  const bboxMaxLat = Math.min(85, centerLat + expandedLatSpan / 2);
-
-  const bbox = `${bboxMinLng},${bboxMinLat},${bboxMaxLng},${bboxMaxLat}`;
-
-  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/${bbox}/900x460?padding=56&access_token=${encodeURIComponent(
+  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/auto/760x320?padding=36&access_token=${encodeURIComponent(
     token
   )}`;
 }
@@ -297,6 +321,30 @@ export default function App() {
   const [mapMode, setMapMode] = React.useState<MapMode>("routeDay");
   const [showTechnicianDashboard, setShowTechnicianDashboard] = React.useState<boolean>(false);
   const [dayRouteSettings, setDayRouteSettings] = React.useState<Record<string, DayRouteSetting>>({});
+
+  const [themeMode, setThemeMode] = React.useState<ThemeMode>("light");
+
+  React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("outlook-map-view-theme");
+      if (saved === "light" || saved === "dark") {
+        setThemeMode(saved);
+        return;
+      }
+    } catch {}
+
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setThemeMode("dark");
+    }
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem("outlook-map-view-theme", themeMode);
+    } catch {}
+  }, [themeMode]);
+
+  const theme = React.useMemo(() => getTheme(themeMode), [themeMode]);
 
   React.useEffect(() => {
     if (!standalone) return;
@@ -955,9 +1003,9 @@ export default function App() {
             }
             .snapshot {
               width: 100%;
-              max-width: 900px;
-              max-height: 460px;
-              object-fit: contain;
+              max-width: 760px;
+              max-height: 320px;
+              object-fit: cover;
               border: 1px solid #dbe2ea;
               border-radius: 12px;
               display: block;
@@ -1026,18 +1074,24 @@ export default function App() {
       style={{
         padding: standalone ? 20 : 16,
         fontFamily: "Arial, Helvetica, sans-serif",
-        background: "#f8fafc",
+        background: theme.appBg,
         minHeight: "100vh",
+        color: theme.text,
+        ["--omv-border" as any]: theme.border,
+        ["--omv-border-soft" as any]: theme.borderSoft,
+        ["--omv-panel-soft" as any]: theme.panelSoftBg,
+        ["--omv-text" as any]: theme.text,
+        ["--omv-text-soft" as any]: theme.textSoft,
       }}
     >
       <div
         style={{
           marginBottom: 16,
-          background: "linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)",
-          border: "1px solid #dbe2ea",
+          background: theme.shellBg,
+          border: `1px solid ${theme.shellBorder}`,
           borderRadius: 18,
           padding: 18,
-          boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
+          boxShadow: theme.shadow,
         }}
       >
         <div
@@ -1056,12 +1110,12 @@ export default function App() {
                 margin: "0 0 6px 0",
                 fontSize: standalone ? 32 : 28,
                 lineHeight: 1.1,
-                color: "#0f172a",
+                color: theme.text,
               }}
             >
               Outlook Map View
             </h1>
-            <p style={{ margin: 0, color: "#475569", fontSize: 15 }}>
+            <p style={{ margin: 0, color: theme.textSoft, fontSize: 15 }}>
               Visualize calendar events by date, category, technician, calendar, and location.
             </p>
           </div>
@@ -1083,9 +1137,9 @@ export default function App() {
                   height: 40,
                   padding: "0 14px",
                   borderRadius: 10,
-                  border: "1px solid #0f172a",
-                  background: "#ffffff",
-                  color: "#0f172a",
+                  border: `1px solid ${theme.borderSoft}`,
+                  background: theme.panelBg,
+                  color: theme.text,
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",
@@ -1095,9 +1149,27 @@ export default function App() {
               </button>
             ) : null}
 
-            <StatChip label="Visible" value={visibleEvents.length} />
-            <StatChip label="Mapped" value={geocodedEvents.length} />
-            <StatChip label="Cached" value={cacheSize} />
+            <button
+              type="button"
+              onClick={() => setThemeMode((prev) => (prev === "dark" ? "light" : "dark"))}
+              style={{
+                height: 40,
+                padding: "0 14px",
+                borderRadius: 10,
+                border: `1px solid ${theme.borderSoft}`,
+                background: theme.panelBg,
+                color: theme.text,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {themeMode === "dark" ? "Light mode" : "Dark mode"}
+            </button>
+
+            <StatChip label="Visible" value={visibleEvents.length} themeMode={themeMode} />
+            <StatChip label="Mapped" value={geocodedEvents.length} themeMode={themeMode} />
+            <StatChip label="Cached" value={cacheSize} themeMode={themeMode} />
           </div>
         </div>
 
@@ -1141,6 +1213,7 @@ export default function App() {
         ) : null}
 
         <FilterBar
+          themeMode={themeMode}
           filters={filters}
           availableCategories={availableCategories}
           availableTechnicians={availableTechnicians}
@@ -1169,13 +1242,13 @@ export default function App() {
           gap: 16,
           marginBottom: 16,
           padding: 12,
-          background: "#ffffff",
-          border: "1px solid #d1d5db",
+          background: theme.controlBg,
+          border: `1px solid ${theme.border}`,
           borderRadius: 12,
           flexWrap: "wrap",
         }}
       >
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer", color: theme.textSoft }}>
           <input
             id="showOnlyMappable"
             type="checkbox"
@@ -1185,7 +1258,7 @@ export default function App() {
           Show only events with usable map addresses
         </label>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer", color: theme.textSoft }}>
           <input
             id="showRouteOverlay"
             type="checkbox"
@@ -1201,7 +1274,7 @@ export default function App() {
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: "#64748b",
+              color: theme.textMuted,
               textTransform: "uppercase",
               letterSpacing: "0.04em",
             }}
@@ -1212,10 +1285,10 @@ export default function App() {
           <div
             style={{
               display: "inline-flex",
-              border: "1px solid #cbd5e1",
+              border: `1px solid ${theme.borderSoft}`,
               borderRadius: 999,
               overflow: "hidden",
-              background: "#ffffff",
+              background: theme.panelBg,
             }}
           >
             <button
@@ -1224,8 +1297,8 @@ export default function App() {
               style={{
                 border: "none",
                 padding: "8px 12px",
-                background: mapMode === "routeDay" ? "#dbeafe" : "#ffffff",
-                color: mapMode === "routeDay" ? "#1d4ed8" : "#334155",
+                background: mapMode === "routeDay" ? (themeMode === "dark" ? "rgba(37,99,235,0.18)" : "#dbeafe") : theme.panelBg,
+                color: mapMode === "routeDay" ? "#2563eb" : theme.textSoft,
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -1240,8 +1313,8 @@ export default function App() {
                 border: "none",
                 borderLeft: "1px solid #cbd5e1",
                 padding: "8px 12px",
-                background: mapMode === "allFiltered" ? "#dbeafe" : "#ffffff",
-                color: mapMode === "allFiltered" ? "#1d4ed8" : "#334155",
+                background: mapMode === "allFiltered" ? (themeMode === "dark" ? "rgba(37,99,235,0.18)" : "#dbeafe") : theme.panelBg,
+                color: mapMode === "allFiltered" ? "#2563eb" : theme.textSoft,
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -1257,7 +1330,7 @@ export default function App() {
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: "#64748b",
+              color: theme.textMuted,
               textTransform: "uppercase",
               letterSpacing: "0.04em",
             }}
@@ -1272,9 +1345,9 @@ export default function App() {
               height: 36,
               padding: "0 12px",
               borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#0f172a",
+              border: `1px solid ${theme.borderSoft}`,
+              background: theme.panelBg,
+              color: theme.text,
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
@@ -1291,9 +1364,9 @@ export default function App() {
               height: 36,
               padding: "0 12px",
               borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              background: adjustedRoutePreviews.length === 0 ? "#f8fafc" : "#ffffff",
-              color: adjustedRoutePreviews.length === 0 ? "#94a3b8" : "#0f172a",
+              border: `1px solid ${theme.borderSoft}`,
+              background: adjustedRoutePreviews.length === 0 ? theme.panelSoftBg : theme.panelBg,
+              color: adjustedRoutePreviews.length === 0 ? theme.textMuted : theme.text,
               fontSize: 13,
               fontWeight: 700,
               cursor: adjustedRoutePreviews.length === 0 ? "default" : "pointer",
@@ -1310,9 +1383,9 @@ export default function App() {
               height: 36,
               padding: "0 12px",
               borderRadius: 10,
-              border: "1px solid #cbd5e1",
-              background: adjustedRoutePreviews.length === 0 ? "#f8fafc" : "#ffffff",
-              color: adjustedRoutePreviews.length === 0 ? "#94a3b8" : "#0f172a",
+              border: `1px solid ${theme.borderSoft}`,
+              background: adjustedRoutePreviews.length === 0 ? theme.panelSoftBg : theme.panelBg,
+              color: adjustedRoutePreviews.length === 0 ? theme.textMuted : theme.text,
               fontSize: 13,
               fontWeight: 700,
               cursor: adjustedRoutePreviews.length === 0 ? "default" : "pointer",
@@ -1322,11 +1395,11 @@ export default function App() {
           </button>
         </div>
 
-        <span style={{ fontSize: 12, color: "#6b7280" }}>
+        <span style={{ fontSize: 12, color: theme.textMuted }}>
           Day-level route assumptions now drive reporting totals.
         </span>
 
-        <span style={{ marginLeft: "auto", fontSize: 12, color: "#6b7280" }}>
+        <span style={{ marginLeft: "auto", fontSize: 12, color: theme.textMuted }}>
           Showing {visibleEvents.length} event{visibleEvents.length === 1 ? "" : "s"} •{" "}
           {geocodedEvents.length} mapped
         </span>
@@ -1335,10 +1408,10 @@ export default function App() {
       <div
         style={{
           marginBottom: 16,
-          border: "1px solid #d1d5db",
+          border: `1px solid ${theme.border}`,
           padding: 16,
           borderRadius: 12,
-          background: "#fff",
+          background: theme.panelBg,
         }}
       >
         <div
@@ -1352,19 +1425,20 @@ export default function App() {
           }}
         >
           <div>
-            <h2 style={{ margin: "0 0 4px 0", fontSize: 20 }}>Technician Day Totals</h2>
-            <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+            <h2 style={{ margin: "0 0 4px 0", fontSize: 20, color: theme.text }}>Technician Day Totals</h2>
+            <p style={{ margin: 0, color: theme.textMuted, fontSize: 14 }}>
               Totals reflect current filters and per-day start/end assumptions.
             </p>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <MiniStatChip label="Techs" value={technicianDashboardStats.technicians} />
-            <MiniStatChip label="Day Rows" value={technicianDashboardStats.dayRows} />
-            <MiniStatChip label="Stops" value={technicianDashboardStats.totalStops} />
+            <MiniStatChip label="Techs" value={technicianDashboardStats.technicians} themeMode={themeMode} />
+            <MiniStatChip label="Day Rows" value={technicianDashboardStats.dayRows} themeMode={themeMode} />
+            <MiniStatChip label="Stops" value={technicianDashboardStats.totalStops} themeMode={themeMode} />
             <MiniStatChip
               label="Field Time"
               value={formatDuration(technicianDashboardStats.totalFieldSeconds)}
+              themeMode={themeMode}
             />
 
             <button
@@ -1374,9 +1448,9 @@ export default function App() {
                 height: 38,
                 padding: "0 14px",
                 borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                background: "#ffffff",
-                color: "#0f172a",
+                border: `1px solid ${theme.borderSoft}`,
+                background: theme.panelBg,
+                color: theme.text,
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -1394,8 +1468,8 @@ export default function App() {
                 border: "1px dashed #cbd5e1",
                 borderRadius: 10,
                 padding: 14,
-                color: "#64748b",
-                background: "#f8fafc",
+                color: theme.textMuted,
+                background: theme.appBg,
               }}
             >
               No technician totals available for the current filters.
@@ -1421,28 +1495,28 @@ export default function App() {
                     <div
                       key={technician}
                       style={{
-                        border: "1px solid #dbe2ea",
+                        border: `1px solid ${theme.shellBorder}`,
                         borderRadius: 12,
                         padding: 14,
-                        background: "#fcfdff",
+                        background: theme.panelSoftBg,
                       }}
                     >
-                      <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>{technician}</div>
-                      <div style={{ display: "grid", gap: 6, fontSize: 14, color: "#475569" }}>
+                      <div style={{ fontWeight: 700, color: theme.text, marginBottom: 8 }}>{technician}</div>
+                      <div style={{ display: "grid", gap: 6, fontSize: 14, color: theme.textSoft }}>
                         <div>
-                          <strong style={{ color: "#0f172a" }}>Days:</strong> {rows.length}
+                          <strong style={{ color: theme.text }}>Days:</strong> {rows.length}
                         </div>
                         <div>
-                          <strong style={{ color: "#0f172a" }}>Stops:</strong> {stops}
+                          <strong style={{ color: theme.text }}>Stops:</strong> {stops}
                         </div>
                         <div>
-                          <strong style={{ color: "#0f172a" }}>Drive:</strong> {formatDuration(driveSeconds)}
+                          <strong style={{ color: theme.text }}>Drive:</strong> {formatDuration(driveSeconds)}
                         </div>
                         <div>
-                          <strong style={{ color: "#0f172a" }}>Field:</strong> {formatDuration(fieldSeconds)}
+                          <strong style={{ color: theme.text }}>Field:</strong> {formatDuration(fieldSeconds)}
                         </div>
                         <div>
-                          <strong style={{ color: "#0f172a" }}>Miles:</strong> {formatMiles(miles)}
+                          <strong style={{ color: theme.text }}>Miles:</strong> {formatMiles(miles)}
                         </div>
                       </div>
                     </div>
@@ -1455,9 +1529,9 @@ export default function App() {
                   marginBottom: 12,
                   padding: 10,
                   borderRadius: 10,
-                  background: "#f8fafc",
-                  border: "1px solid #dbe2ea",
-                  color: "#64748b",
+                  background: theme.appBg,
+                  border: `1px solid ${theme.shellBorder}`,
+                  color: theme.textMuted,
                   fontSize: 12,
                 }}
               >
@@ -1508,12 +1582,12 @@ export default function App() {
         ) : null}
       </div>
 
-      {loading ? <p>Loading calendar events...</p> : null}
-      {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
-      {mapLoading ? <p>Geocoding mappable events...</p> : null}
-      {mapError ? <p style={{ color: "crimson" }}>{mapError}</p> : null}
-      {routeLoading ? <p>Building route preview...</p> : null}
-      {routeError ? <p style={{ color: "crimson" }}>{routeError}</p> : null}
+      {loading ? <p style={{ color: theme.textSoft }}>Loading calendar events...</p> : null}
+      {error ? <p style={{ color: "#ef4444" }}>{error}</p> : null}
+      {mapLoading ? <p style={{ color: theme.textSoft }}>Geocoding mappable events...</p> : null}
+      {mapError ? <p style={{ color: "#ef4444" }}>{mapError}</p> : null}
+      {routeLoading ? <p style={{ color: theme.textSoft }}>Building route preview...</p> : null}
+      {routeError ? <p style={{ color: "#ef4444" }}>{routeError}</p> : null}
 
       <div
         style={{
@@ -1547,18 +1621,19 @@ export default function App() {
               selectedEventId={selectedEventId}
               onSelectEvent={setSelectedEventId}
               driveTimeByEventId={driveTimeByEventId}
+              themeMode={themeMode}
             />
           </div>
 
           <div
             style={{
-              border: "1px solid #d1d5db",
+              border: `1px solid ${theme.border}`,
               padding: 16,
               borderRadius: 12,
-              background: "#fff",
+              background: theme.panelBg,
             }}
           >
-            <h2 style={{ marginTop: 0, fontSize: 18 }}>Route Preview</h2>
+            <h2 style={{ marginTop: 0, fontSize: 18, color: theme.text }}>Route Preview</h2>
 
             <div
               style={{
@@ -1568,7 +1643,7 @@ export default function App() {
               }}
             >
               {mapMode === "allFiltered" ? (
-                <p style={{ margin: 0, color: "#6b7280" }}>
+                <p style={{ margin: 0, color: theme.textMuted }}>
                   Route cards stay available below, but the map is currently showing all filtered mappable events.
                 </p>
               ) : effectiveShowRouteOverlay && adjustedRoutePreviews.length > 0 ? (
@@ -1580,8 +1655,8 @@ export default function App() {
                       <div
                         key={route.dayKey}
                         style={{
-                          border: isActive ? "2px solid #2563eb" : "1px solid #d1d5db",
-                          background: isActive ? "#eff6ff" : "#ffffff",
+                          border: isActive ? `2px solid ${theme.panelSelectedBorder}` : `1px solid ${theme.border}`,
+                          background: isActive ? theme.panelSelectedBg : theme.panelBg,
                           borderRadius: 12,
                           padding: 12,
                         }}
@@ -1596,8 +1671,8 @@ export default function App() {
                             marginBottom: 8,
                           }}
                         >
-                          <div style={{ fontWeight: 700, color: "#0f172a" }}>{route.dayLabel}</div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                          <div style={{ fontWeight: 700, color: theme.text }}>{route.dayLabel}</div>
+                          <div style={{ fontSize: 12, color: theme.textMuted }}>
                             Reporting uses the settings below
                           </div>
                         </div>
@@ -1610,8 +1685,8 @@ export default function App() {
                             marginBottom: 12,
                           }}
                         >
-                          <label style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
-                            <span style={{ fontWeight: 700, color: "#0f172a" }}>Start</span>
+                          <label style={{ display: "grid", gap: 4, fontSize: 13, color: theme.textSoft }}>
+                            <span style={{ fontWeight: 700, color: theme.text }}>Start</span>
                             <select
                               value={route.startMode}
                               onChange={(e) =>
@@ -1622,9 +1697,10 @@ export default function App() {
                               style={{
                                 height: 36,
                                 borderRadius: 8,
-                                border: "1px solid #cbd5e1",
+                                border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
-                                background: "#ffffff",
+                                background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="homeOffice">Home office</option>
@@ -1632,8 +1708,8 @@ export default function App() {
                             </select>
                           </label>
 
-                          <label style={{ display: "grid", gap: 4, fontSize: 13, color: "#475569" }}>
-                            <span style={{ fontWeight: 700, color: "#0f172a" }}>End</span>
+                          <label style={{ display: "grid", gap: 4, fontSize: 13, color: theme.textSoft }}>
+                            <span style={{ fontWeight: 700, color: theme.text }}>End</span>
                             <select
                               value={route.endMode}
                               onChange={(e) =>
@@ -1644,9 +1720,10 @@ export default function App() {
                               style={{
                                 height: 36,
                                 borderRadius: 8,
-                                border: "1px solid #cbd5e1",
+                                border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
-                                background: "#ffffff",
+                                background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="lastStop">End at last inspection</option>
@@ -1655,44 +1732,44 @@ export default function App() {
                           </label>
                         </div>
 
-                        <div style={{ color: "#475569", fontSize: 14, display: "grid", gap: 6 }}>
+                        <div style={{ color: theme.textSoft, fontSize: 14, display: "grid", gap: 6 }}>
                           <div>
                             Start mode:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {getStartModeLabel(route.startMode)}
                             </strong>
                           </div>
                           <div>
                             End mode:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {getEndModeLabel(route.endMode)}
                             </strong>
                           </div>
                           <div>
                             Stops:{" "}
-                            <strong style={{ color: "#0f172a" }}>{route.orderedEventIds.length}</strong>
+                            <strong style={{ color: theme.text }}>{route.orderedEventIds.length}</strong>
                           </div>
                           <div>
                             Reported drive time:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {formatDuration(route.adjustedDriveSeconds)}
                             </strong>
                           </div>
                           <div>
                             Event time:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {formatDuration(route.totalEventDurationSeconds)}
                             </strong>
                           </div>
                           <div>
                             Reported field time:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {formatDuration(route.adjustedFieldSeconds)}
                             </strong>
                           </div>
                           <div>
                             Reported drive distance:{" "}
-                            <strong style={{ color: "#0f172a" }}>
+                            <strong style={{ color: theme.text }}>
                               {formatMiles(route.adjustedDistanceMeters)}
                             </strong>
                           </div>
@@ -1703,9 +1780,9 @@ export default function App() {
                             style={{
                               marginTop: 10,
                               fontSize: 12,
-                              color: "#64748b",
-                              background: "#f8fafc",
-                              border: "1px solid #dbe2ea",
+                              color: theme.textMuted,
+                              background: theme.panelSoftBg,
+                              border: `1px solid ${theme.shellBorder}`,
                               borderRadius: 8,
                               padding: 8,
                             }}
@@ -1718,7 +1795,7 @@ export default function App() {
                   })}
                 </div>
               ) : (
-                <p style={{ margin: 0, color: "#6b7280" }}>
+                <p style={{ margin: 0, color: theme.textMuted }}>
                   {effectiveShowRouteOverlay
                     ? "Need at least one mapped event to preview a route from Home Office."
                     : "Route overlay is turned off."}
@@ -1729,10 +1806,10 @@ export default function App() {
 
           <div
             style={{
-              border: "1px solid #d1d5db",
+              border: `1px solid ${theme.border}`,
               padding: 16,
               borderRadius: 12,
-              background: "#fff",
+              background: theme.panelBg,
             }}
           >
             <h2 style={{ marginTop: 0, fontSize: 18 }}>Selected Event</h2>
@@ -1746,20 +1823,20 @@ export default function App() {
             >
               {selectedEvent ? (
                 <div>
-                  <h3 style={{ marginTop: 0, marginBottom: 8 }}>{selectedEvent.subject}</h3>
-                  <p style={{ margin: "0 0 8px 0", color: "#374151" }}>
+                  <h3 style={{ marginTop: 0, marginBottom: 8, color: theme.text }}>{selectedEvent.subject}</h3>
+                  <p style={{ margin: "0 0 8px 0", color: theme.textSoft }}>
                     {selectedEvent.addressText || "No usable address"}
                   </p>
-                  <p style={{ margin: "0 0 8px 0", color: "#6b7280" }}>
+                  <p style={{ margin: "0 0 8px 0", color: theme.textMuted }}>
                     Calendar: {selectedEvent.calendarName}
                   </p>
-                  <p style={{ margin: "0 0 8px 0", color: "#6b7280" }}>
+                  <p style={{ margin: "0 0 8px 0", color: theme.textMuted }}>
                     Technicians:{" "}
                     {selectedEvent.technicians.length > 0
                       ? selectedEvent.technicians.join(", ")
                       : "None"}
                   </p>
-                  <p style={{ margin: "0 0 12px 0", color: "#6b7280" }}>
+                  <p style={{ margin: "0 0 12px 0", color: theme.textMuted }}>
                     Categories:{" "}
                     {selectedEvent.categories.length > 0
                       ? selectedEvent.categories.join(", ")
@@ -1782,7 +1859,7 @@ export default function App() {
                   ) : null}
                 </div>
               ) : (
-                <p style={{ margin: 0, color: "#6b7280" }}>No event selected.</p>
+                <p style={{ margin: 0, color: theme.textMuted }}>No event selected.</p>
               )}
             </div>
           </div>
@@ -1803,12 +1880,13 @@ export default function App() {
   );
 }
 
-function StatChip({ label, value }: { label: string; value: string | number }) {
+function StatChip({ label, value, themeMode }: { label: string; value: string | number; themeMode: ThemeMode }) {
+  const theme = getTheme(themeMode);
   return (
     <div
       style={{
-        background: "#ffffff",
-        border: "1px solid #dbe2ea",
+        background: theme.chipBg,
+        border: `1px solid ${theme.chipBorder}`,
         borderRadius: 12,
         padding: "8px 10px",
         minWidth: 78,
@@ -1818,7 +1896,7 @@ function StatChip({ label, value }: { label: string; value: string | number }) {
         style={{
           fontSize: 11,
           fontWeight: 700,
-          color: "#64748b",
+          color: theme.textMuted,
           textTransform: "uppercase",
           letterSpacing: "0.04em",
           marginBottom: 2,
@@ -1826,17 +1904,18 @@ function StatChip({ label, value }: { label: string; value: string | number }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>{value}</div>
     </div>
   );
 }
 
-function MiniStatChip({ label, value }: { label: string; value: string | number }) {
+function MiniStatChip({ label, value, themeMode }: { label: string; value: string | number; themeMode: ThemeMode }) {
+  const theme = getTheme(themeMode);
   return (
     <div
       style={{
-        background: "#fcfdff",
-        border: "1px solid #dbe2ea",
+        background: theme.panelSoftBg,
+        border: `1px solid ${theme.chipBorder}`,
         borderRadius: 10,
         padding: "8px 10px",
         minWidth: 80,
@@ -1846,7 +1925,7 @@ function MiniStatChip({ label, value }: { label: string; value: string | number 
         style={{
           fontSize: 10,
           fontWeight: 700,
-          color: "#64748b",
+          color: theme.textMuted,
           textTransform: "uppercase",
           letterSpacing: "0.04em",
           marginBottom: 2,
@@ -1854,23 +1933,23 @@ function MiniStatChip({ label, value }: { label: string; value: string | number 
       >
         {label}
       </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{value}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{value}</div>
     </div>
   );
 }
 
 const tableHeaderStyle: React.CSSProperties = {
-  border: "1px solid #dbe2ea",
-  background: "#f8fafc",
+  border: "1px solid var(--omv-border-soft)",
+  background: "var(--omv-panel-soft)",
   padding: "8px",
   textAlign: "left",
   fontWeight: 700,
-  color: "#0f172a",
+  color: "var(--omv-text)",
 };
 
 const tableCellStyle: React.CSSProperties = {
-  border: "1px solid #dbe2ea",
+  border: "1px solid var(--omv-border-soft)",
   padding: "8px",
   verticalAlign: "top",
-  color: "#334155",
+  color: "var(--omv-text-soft)",
 };
