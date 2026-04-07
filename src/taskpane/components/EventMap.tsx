@@ -123,6 +123,7 @@ export default function EventMap({
   onSelectEvent,
   routeGeometry = null,
   showRouteOverlay = true,
+  standalone = false,
 }: EventMapProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<mapboxgl.Map | null>(null);
@@ -276,22 +277,32 @@ export default function EventMap({
     );
   }
 
-  return (
-    <div style={{ border: "1px solid #ccc", padding: 16, borderRadius: 8, background: "#fff" }}>
-      <h2 style={{ marginTop: 0 }}>Map</h2>
-      <p style={{ marginTop: 0 }}>Mappable events in current view: {events.length}</p>
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: 420,
-          borderRadius: 8,
-          overflow: "hidden",
-          background: "#e5e7eb",
-          position: "relative",
-        }}
-      />
-    </div>
+ return (
+  <div
+    style={{
+      border: "1px solid #ccc",
+      padding: 16,
+      borderRadius: 8,
+      background: "#fff",
+    }}
+  >
+    <h2 style={{ marginTop: 0, color: "#0f172a" }}>Map</h2>
+    <p style={{ marginTop: 0, color: "#475569" }}>
+      Mappable events in current view: {events.length}
+    </p>
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: standalone ? "calc(100vh - 270px)" : 700,
+        minHeight: standalone ? 820 : 700,
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#e5e7eb",
+        position: "relative",
+      }}
+    />
+  </div>
   );
 }
 
