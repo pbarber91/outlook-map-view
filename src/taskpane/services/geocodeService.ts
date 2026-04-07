@@ -49,9 +49,7 @@ function pickBestAddressSegment(value: string): string {
     return "";
   }
 
-  const streetLike = segments.find((segment) =>
-    /\d+\s+[a-z0-9]/i.test(segment)
-  );
+  const streetLike = segments.find((segment) => /\d+\s+[a-z0-9]/i.test(segment));
 
   return streetLike || segments[0];
 }
@@ -61,6 +59,35 @@ function sanitizeAddressForGeocoding(address: string): string {
   const bestSegment = pickBestAddressSegment(noCoords);
 
   return normalizeWhitespace(bestSegment);
+}
+
+function isValidLatitude(value: number): boolean {
+  return Number.isFinite(value) && value >= -90 && value <= 90;
+}
+
+function isValidLongitude(value: number): boolean {
+  return Number.isFinite(value) && value >= -180 && value <= 180;
+}
+
+function parseEmbeddedCoordinates(value: string): CachedCoords | null {
+  const normalized = normalizeWhitespace(value);
+
+  const plainPairMatch = normalized.match(
+    /(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/
+  );
+
+  if (!plainPairMatch) {
+    return null;
+  }
+
+  const latitude = Number(plainPairMatch[1]);
+  const longitude = Number(plainPairMatch[2]);
+
+  if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
+    return null;
+  }
+
+  return { latitude, longitude };
 }
 
 function loadPersistentCache(): void {
@@ -100,6 +127,11 @@ function persistCache(): void {
 loadPersistentCache();
 
 async function geocodeAddress(address: string): Promise<CachedCoords | null> {
+  const directCoords = parseEmbeddedCoordinates(address);
+  if (directCoords) {
+    return directCoords;
+  }
+
   const cleaned = sanitizeAddressForGeocoding(address);
 
   if (!cleaned) {
