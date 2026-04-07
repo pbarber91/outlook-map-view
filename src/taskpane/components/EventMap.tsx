@@ -9,9 +9,10 @@ declare const __MAPBOX_ACCESS_TOKEN__: string;
 type EventMapProps = {
   events: GeocodedCalendarEvent[];
   selectedEventId: string | null;
-  onSelectEvent: (eventId: string) => void;
+  onSelectEvent: React.Dispatch<React.SetStateAction<string | null>>;
   routeGeometry?: RouteGeometry | null;
   showRouteOverlay?: boolean;
+  standalone?: boolean;
 };
 
 type MarkerEntry = {
@@ -180,7 +181,7 @@ export default function EventMap({
       const color = getCategoryColor(primaryCategory);
 
       const popup = new mapboxgl.Popup({ offset: 18 }).setHTML(`
-        <div style="font-family: Arial, Helvetica, sans-serif; min-width: 220px; color: #0f172a; background: #ffffff;">
+        <div style="font-family: Arial, Helvetica, sans-serif; min-width: 220px; color: #0f172a;">
           <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #64748b;">Stop ${index + 1}</div>
           <div style="font-weight: 700; margin-bottom: 6px; color: #0f172a;">${escapeHtml(event.subject)}</div>
           <div style="font-size: 12px; margin-bottom: 4px; color: #334155;">${escapeHtml(

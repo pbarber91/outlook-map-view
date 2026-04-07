@@ -1498,7 +1498,7 @@ export default function App() {
                         border: `1px solid ${theme.shellBorder}`,
                         borderRadius: 12,
                         padding: 14,
-                        background: theme.panelBg,
+                        background: theme.panelSoftBg,
                       }}
                     >
                       <div style={{ fontWeight: 700, color: theme.text, marginBottom: 8 }}>{technician}</div>
@@ -1529,7 +1529,7 @@ export default function App() {
                   marginBottom: 12,
                   padding: 10,
                   borderRadius: 10,
-                  background: theme.panelSoftBg,
+                  background: theme.appBg,
                   border: `1px solid ${theme.shellBorder}`,
                   color: theme.textMuted,
                   fontSize: 12,
@@ -1781,7 +1781,7 @@ export default function App() {
                               marginTop: 10,
                               fontSize: 12,
                               color: theme.textMuted,
-                              background: theme.appBg,
+                              background: theme.panelSoftBg,
                               border: `1px solid ${theme.shellBorder}`,
                               borderRadius: 8,
                               padding: 8,
