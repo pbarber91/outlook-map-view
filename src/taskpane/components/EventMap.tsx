@@ -144,6 +144,31 @@ export default function EventMap({
   const token = getMapboxToken();
   const [mapStyle, setMapStyle] = React.useState<string>(MAP_STYLE_OPTIONS[0].value);
 
+  const fitMapToEvents = React.useCallback(() => {
+    const map = mapRef.current;
+    if (!map || events.length === 0) return;
+
+    const bounds = new mapboxgl.LngLatBounds();
+
+    events.forEach((event) => {
+      bounds.extend([event.longitude, event.latitude]);
+    });
+
+    if (events.length === 1) {
+      const only = events[0];
+      map.flyTo({
+        center: [only.longitude, only.latitude],
+        zoom: 16,
+        essential: true,
+      });
+      return;
+    }
+
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+    }
+  }, [events]);
+
   const rebuildMarkers = React.useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -152,8 +177,6 @@ export default function EventMap({
     markersRef.current = [];
 
     if (events.length === 0) return;
-
-    const bounds = new mapboxgl.LngLatBounds();
 
     events.forEach((event, index) => {
       const isSelected = event.id === selectedEventId;
@@ -187,25 +210,17 @@ export default function EventMap({
         .addTo(map);
 
       markersRef.current.push({ marker, popup, eventId: event.id });
-      bounds.extend([event.longitude, event.latitude]);
     });
 
-    if (events.length === 1) {
-      const only = events[0];
-      map.flyTo({
-        center: [only.longitude, only.latitude],
-        zoom: 16,
-        essential: true,
-      });
+    fitMapToEvents();
 
+    if (events.length === 1) {
       const onlyMarker = markersRef.current[0];
       if (onlyMarker && !onlyMarker.popup.isOpen()) {
         onlyMarker.marker.togglePopup();
       }
-    } else if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
     }
-  }, [events, onSelectEvent, selectedEventId]);
+  }, [events, fitMapToEvents, onSelectEvent, selectedEventId]);
 
   React.useEffect((): void | (() => void) => {
     if (!containerRef.current || mapRef.current || !token) {
@@ -222,6 +237,7 @@ export default function EventMap({
     });
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "top-right");
+    map.addControl(new mapboxgl.FullscreenControl(), "top-right");
 
     mapRef.current = map;
 
@@ -346,6 +362,25 @@ export default function EventMap({
             flexWrap: "wrap",
           }}
         >
+          <button
+            type="button"
+            onClick={fitMapToEvents}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: events.length > 0 ? "pointer" : "default",
+              opacity: events.length > 0 ? 1 : 0.6,
+            }}
+            disabled={events.length === 0}
+          >
+            Fit all
+          </button>
+
           <label
             htmlFor="map-style-select"
             style={{
