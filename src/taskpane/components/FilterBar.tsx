@@ -3,7 +3,10 @@ import { DatePreset, FilterState } from "../types/filters";
 import { CalendarSource } from "../types/calendar";
 import { getCategoryColor } from "../utils/categoryColors";
 
+type ThemeMode = "light" | "dark";
+
 type FilterBarProps = {
+  themeMode?: ThemeMode;
   filters: FilterState;
   availableCategories: string[];
   availableTechnicians: string[];
@@ -34,7 +37,38 @@ export default function FilterBar({
   onTechniciansChange,
   onCalendarIdsChange,
   onRefresh,
+  themeMode = "light",
 }: FilterBarProps) {
+  const isDark = themeMode === "dark";
+  const theme = isDark
+    ? {
+        panelBg: "#111827",
+        border: "#334155",
+        borderSoft: "#475569",
+        text: "#f8fafc",
+        textSoft: "#cbd5e1",
+        textMuted: "#94a3b8",
+        controlBg: "#0f172a",
+        chipBg: "#111827",
+        chipInactiveBg: "#0f172a",
+        chipInactiveText: "#cbd5e1",
+        emptyBg: "#0f172a",
+        shadow: "0 12px 28px rgba(2, 6, 23, 0.24)",
+      }
+    : {
+        panelBg: "#ffffff",
+        border: "#dbe2ea",
+        borderSoft: "#cbd5e1",
+        text: "#0f172a",
+        textSoft: "#475569",
+        textMuted: "#64748b",
+        controlBg: "#ffffff",
+        chipBg: "#ffffff",
+        chipInactiveBg: "#ffffff",
+        chipInactiveText: "#334155",
+        emptyBg: "#f8fafc",
+        shadow: "0 1px 2px rgba(0,0,0,0.04)",
+      };
   const handleCategoryToggle = (category: string) => {
     const exists = filters.categories.includes(category);
 
@@ -71,11 +105,11 @@ export default function FilterBar({
   return (
     <div
       style={{
-        background: "#ffffff",
-        border: "1px solid #dbe2ea",
+        background: theme.panelBg,
+        border: `1px solid ${theme.border}`,
         borderRadius: 16,
         padding: 16,
-        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+        boxShadow: theme.shadow,
       }}
     >
       <div
@@ -92,7 +126,7 @@ export default function FilterBar({
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: "#475569",
+              color: theme.textSoft,
               textTransform: "uppercase",
               letterSpacing: "0.04em",
             }}
@@ -105,11 +139,11 @@ export default function FilterBar({
             onChange={(e) => onPresetChange(e.target.value as DatePreset)}
             style={{
               height: 40,
-              border: "1px solid #cbd5e1",
+              border: `1px solid ${theme.borderSoft}`,
               borderRadius: 10,
               padding: "0 12px",
-              background: "#ffffff",
-              color: "#0f172a",
+              background: theme.panelBg,
+              color: theme.text,
               fontSize: 14,
             }}
           >
@@ -129,7 +163,7 @@ export default function FilterBar({
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: "#475569",
+                  color: theme.textSoft,
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -143,11 +177,11 @@ export default function FilterBar({
                 onChange={(e) => onCustomDateChange("startDate", e.target.value)}
                 style={{
                   height: 40,
-                  border: "1px solid #cbd5e1",
+                  border: `1px solid ${theme.borderSoft}`,
                   borderRadius: 10,
                   padding: "0 12px",
-                  background: "#ffffff",
-                  color: "#0f172a",
+                  background: theme.panelBg,
+                  color: theme.text,
                   fontSize: 14,
                 }}
               />
@@ -159,7 +193,7 @@ export default function FilterBar({
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: "#475569",
+                  color: theme.textSoft,
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -173,11 +207,11 @@ export default function FilterBar({
                 onChange={(e) => onCustomDateChange("endDate", e.target.value)}
                 style={{
                   height: 40,
-                  border: "1px solid #cbd5e1",
+                  border: `1px solid ${theme.borderSoft}`,
                   borderRadius: 10,
                   padding: "0 12px",
-                  background: "#ffffff",
-                  color: "#0f172a",
+                  background: theme.panelBg,
+                  color: theme.text,
                   fontSize: 14,
                 }}
               />
@@ -232,9 +266,9 @@ export default function FilterBar({
           <div
             style={{
               fontSize: 13,
-              color: "#64748b",
-              background: "#f8fafc",
-              border: "1px dashed #cbd5e1",
+              color: theme.textMuted,
+              background: theme.emptyBg,
+              border: `1px dashed ${theme.borderSoft}`,
               borderRadius: 10,
               padding: "10px 12px",
               marginBottom: 14,
@@ -258,10 +292,10 @@ export default function FilterBar({
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    border: active ? "1px solid #93c5fd" : "1px solid #d1d5db",
-                    background: active ? "#dbeafe" : "#ffffff",
-                    color: active ? "#1d4ed8" : "#334155",
-                    boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
+                    border: active ? "1px solid #93c5fd" : `1px solid ${theme.border}`,
+                    background: active ? (isDark ? "rgba(37,99,235,0.18)" : "#dbeafe") : theme.chipInactiveBg,
+                    color: active ? "#2563eb" : theme.chipInactiveText,
+                    boxShadow: active ? (isDark ? "0 0 0 1px rgba(96,165,250,0.18)" : "0 0 0 2px rgba(15,23,42,0.04)") : "none",
                   }}
                 >
                   {calendar.name}
@@ -289,9 +323,9 @@ export default function FilterBar({
           <div
             style={{
               fontSize: 13,
-              color: "#64748b",
-              background: "#f8fafc",
-              border: "1px dashed #cbd5e1",
+              color: theme.textMuted,
+              background: theme.emptyBg,
+              border: `1px dashed ${theme.borderSoft}`,
               borderRadius: 10,
               padding: "10px 12px",
               marginBottom: 14,
@@ -315,10 +349,10 @@ export default function FilterBar({
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    border: active ? "1px solid #93c5fd" : "1px solid #d1d5db",
-                    background: active ? "#dbeafe" : "#ffffff",
-                    color: active ? "#1d4ed8" : "#334155",
-                    boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
+                    border: active ? "1px solid #93c5fd" : `1px solid ${theme.border}`,
+                    background: active ? (isDark ? "rgba(37,99,235,0.18)" : "#dbeafe") : theme.chipInactiveBg,
+                    color: active ? "#2563eb" : theme.chipInactiveText,
+                    boxShadow: active ? (isDark ? "0 0 0 1px rgba(96,165,250,0.18)" : "0 0 0 2px rgba(15,23,42,0.04)") : "none",
                   }}
                 >
                   {technician}
@@ -345,9 +379,9 @@ export default function FilterBar({
           <div
             style={{
               fontSize: 13,
-              color: "#64748b",
-              background: "#f8fafc",
-              border: "1px dashed #cbd5e1",
+              color: theme.textMuted,
+              background: theme.emptyBg,
+              border: `1px dashed ${theme.borderSoft}`,
               borderRadius: 10,
               padding: "10px 12px",
             }}
@@ -373,10 +407,10 @@ export default function FilterBar({
                     fontWeight: 700,
                     border: active
                       ? `1px solid ${color.border}`
-                      : "1px solid #d1d5db",
-                    background: active ? color.background : "#ffffff",
-                    color: active ? color.text : "#334155",
-                    boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
+                      : `1px solid ${theme.border}`,
+                    background: active ? color.background : theme.chipInactiveBg,
+                    color: active ? color.text : theme.chipInactiveText,
+                    boxShadow: active ? (isDark ? "0 0 0 1px rgba(96,165,250,0.18)" : "0 0 0 2px rgba(15,23,42,0.04)") : "none",
                   }}
                 >
                   {category}

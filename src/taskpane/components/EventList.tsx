@@ -2,7 +2,10 @@ import * as React from "react";
 import { MappedCalendarEvent } from "../types/calendar";
 import { getCategoryColor } from "../utils/categoryColors";
 
+type ThemeMode = "light" | "dark";
+
 type EventListProps = {
+  themeMode?: ThemeMode;
   events: MappedCalendarEvent[];
   selectedEventId: string | null;
   onSelectEvent: (eventId: string) => void;
@@ -64,9 +67,40 @@ export default function EventList({
   selectedEventId,
   onSelectEvent,
   driveTimeByEventId = {},
+  themeMode = "light",
 }: EventListProps) {
+  const isDark = themeMode === "dark";
+  const theme = isDark
+    ? {
+        panelBg: "#111827",
+        border: "#334155",
+        text: "#f8fafc",
+        textSoft: "#cbd5e1",
+        textMuted: "#94a3b8",
+        emptyBg: "#0f172a",
+        countBg: "#0f172a",
+        countText: "#cbd5e1",
+        selectedBg: "rgba(37,99,235,0.18)",
+        selectedBorder: "#60a5fa",
+        driveBg: "#0f172a",
+        driveBorder: "#334155",
+      }
+    : {
+        panelBg: "#ffffff",
+        border: "#d1d5db",
+        text: "#0f172a",
+        textSoft: "#374151",
+        textMuted: "#6b7280",
+        emptyBg: "#f9fafb",
+        countBg: "#f3f4f6",
+        countText: "#4b5563",
+        selectedBg: "#eff6ff",
+        selectedBorder: "#2563eb",
+        driveBg: "#f8fafc",
+        driveBorder: "#dbe2ea",
+      };
   return (
-    <div style={{ border: "1px solid #d1d5db", padding: 16, borderRadius: 12, background: "#fff" }}>
+    <div style={{ border: `1px solid ${theme.border}`, padding: 16, borderRadius: 12, background: theme.panelBg }}>
       <div
         style={{
           display: "flex",
@@ -75,12 +109,12 @@ export default function EventList({
           marginBottom: 12,
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 18 }}>Events</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: theme.text }}>Events</h2>
         <span
           style={{
             fontSize: 12,
-            color: "#4b5563",
-            background: "#f3f4f6",
+            color: theme.countText,
+            background: theme.countBg,
             borderRadius: 999,
             padding: "4px 8px",
           }}
@@ -92,11 +126,11 @@ export default function EventList({
       {events.length === 0 ? (
         <div
           style={{
-            border: "1px dashed #d1d5db",
+            border: `1px dashed ${theme.border}`,
             borderRadius: 10,
             padding: 16,
-            color: "#6b7280",
-            background: "#f9fafb",
+            color: theme.textMuted,
+            background: theme.emptyBg,
           }}
         >
           No events to display.
@@ -116,8 +150,8 @@ export default function EventList({
                 onClick={() => onSelectEvent(event.id)}
                 style={{
                   textAlign: "left",
-                  border: isSelected ? "2px solid #2563eb" : "1px solid #d1d5db",
-                  background: isSelected ? "#eff6ff" : "#ffffff",
+                  border: isSelected ? `2px solid ${theme.selectedBorder}` : `1px solid ${theme.border}`,
+                  background: isSelected ? theme.selectedBg : theme.panelBg,
                   borderRadius: 12,
                   padding: 14,
                   cursor: "pointer",
@@ -143,7 +177,7 @@ export default function EventList({
                         flex: "0 0 auto",
                       }}
                     />
-                    <h3 style={{ margin: 0, fontSize: 15, lineHeight: 1.35 }}>
+                    <h3 style={{ margin: 0, fontSize: 15, lineHeight: 1.35, color: theme.text }}>
                       {event.subject || "(No subject)"}
                     </h3>
                   </div>
@@ -179,7 +213,7 @@ export default function EventList({
                   )}
                 </div>
 
-                <div style={{ fontSize: 13, color: "#374151", marginBottom: 8 }}>
+                <div style={{ fontSize: 13, color: theme.textSoft, marginBottom: 8 }}>
                   {formatEventDateRange(event.startIso, event.endIso)}
                 </div>
 
@@ -188,9 +222,9 @@ export default function EventList({
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
-                      color: "#0f172a",
-                      background: "#f8fafc",
-                      border: "1px solid #dbe2ea",
+                      color: theme.text,
+                      background: theme.driveBg,
+                      border: `1px solid ${theme.driveBorder}`,
                       borderRadius: 999,
                       display: "inline-block",
                       padding: "4px 8px",
@@ -201,7 +235,7 @@ export default function EventList({
                   </div>
                 ) : null}
 
-                <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 10 }}>
                   {event.addressText || "No usable address"}
                 </div>
 
@@ -227,7 +261,7 @@ export default function EventList({
                       );
                     })
                   ) : (
-                    <span style={{ fontSize: 12, color: "#9ca3af" }}>No categories</span>
+                    <span style={{ fontSize: 12, color: theme.textMuted }}>No categories</span>
                   )}
                 </div>
               </button>
