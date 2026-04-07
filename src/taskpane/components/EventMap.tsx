@@ -21,21 +21,8 @@ type MarkerEntry = {
   eventId: string;
 };
 
-type MapStyleOption = {
-  label: string;
-  value: string;
-};
-
 const ROUTE_SOURCE_ID = "route-preview-source";
 const ROUTE_LAYER_ID = "route-preview-layer";
-
-const MAP_STYLE_OPTIONS: MapStyleOption[] = [
-  { label: "Streets", value: "mapbox://styles/mapbox/streets-v12" },
-  { label: "Outdoors", value: "mapbox://styles/mapbox/outdoors-v12" },
-  { label: "Light", value: "mapbox://styles/mapbox/light-v11" },
-  { label: "Satellite", value: "mapbox://styles/mapbox/satellite-v9" },
-  { label: "Satellite Streets", value: "mapbox://styles/mapbox/satellite-streets-v12" },
-];
 
 function getMapboxToken(): string {
   return typeof __MAPBOX_ACCESS_TOKEN__ === "string" ? __MAPBOX_ACCESS_TOKEN__ : "";
@@ -142,9 +129,43 @@ export default function EventMap({
   const mapRef = React.useRef<mapboxgl.Map | null>(null);
   const markersRef = React.useRef<MarkerEntry[]>([]);
   const token = getMapboxToken();
-  const [mapStyle, setMapStyle] = React.useState<string>(MAP_STYLE_OPTIONS[0].value);
 
-  const rebuildMarkers = React.useCallback(() => {
+  React.useEffect((): void | (() => void) => {
+    if (!containerRef.current || mapRef.current || !token) {
+      return undefined;
+    }
+
+    mapboxgl.accessToken = token;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [-82.4572, 27.9506],
+      zoom: 6,
+    });
+
+    mapRef.current = map;
+
+    map.on("load", () => {
+      ensureRouteLayer(map);
+    });
+
+    return () => {
+      markersRef.current.forEach(({ marker }) => marker.remove());
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [token]);
+
+  React.useEffect((): void => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    updateRouteLayer(map, routeGeometry, showRouteOverlay);
+  }, [routeGeometry, showRouteOverlay]);
+
+  React.useEffect((): void => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -205,65 +226,7 @@ export default function EventMap({
     } else if (!bounds.isEmpty()) {
       map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
     }
-  }, [events, onSelectEvent, selectedEventId]);
-
-  React.useEffect((): void | (() => void) => {
-    if (!containerRef.current || mapRef.current || !token) {
-      return undefined;
-    }
-
-    mapboxgl.accessToken = token;
-
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: mapStyle,
-      center: [-82.4572, 27.9506],
-      zoom: 6,
-    });
-
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "top-right");
-
-    mapRef.current = map;
-
-    map.on("load", () => {
-      ensureRouteLayer(map);
-      updateRouteLayer(map, routeGeometry, showRouteOverlay);
-      rebuildMarkers();
-    });
-
-    return () => {
-      markersRef.current.forEach(({ marker }) => marker.remove());
-      markersRef.current = [];
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [token, mapStyle, rebuildMarkers, routeGeometry, showRouteOverlay]);
-
-  React.useEffect((): void => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (map.getStyle().sprite?.includes(mapStyle)) return;
-
-    map.setStyle(mapStyle);
-
-    map.once("style.load", () => {
-      ensureRouteLayer(map);
-      updateRouteLayer(map, routeGeometry, showRouteOverlay);
-      rebuildMarkers();
-    });
-  }, [mapStyle, rebuildMarkers, routeGeometry, showRouteOverlay]);
-
-  React.useEffect((): void => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    updateRouteLayer(map, routeGeometry, showRouteOverlay);
-  }, [routeGeometry, showRouteOverlay]);
-
-  React.useEffect((): void => {
-    rebuildMarkers();
-  }, [rebuildMarkers]);
+  }, [events, selectedEventId, onSelectEvent]);
 
   React.useEffect((): void => {
     const map = mapRef.current;
@@ -314,87 +277,32 @@ export default function EventMap({
     );
   }
 
-  return (
+ return (
+  <div
+    style={{
+      border: "1px solid #ccc",
+      padding: 16,
+      borderRadius: 8,
+      background: "#fff",
+    }}
+  >
+    <h2 style={{ marginTop: 0, color: "#0f172a" }}>Map</h2>
+    <p style={{ marginTop: 0, color: "#475569" }}>
+      Mappable events in current view: {events.length}
+    </p>
     <div
+      ref={containerRef}
       style={{
-        border: "1px solid #ccc",
-        padding: 16,
+        width: "100%",
+        height: standalone ? "calc(100vh - 270px)" : 700,
+        minHeight: standalone ? 820 : 700,
         borderRadius: 8,
-        background: "#fff",
+        overflow: "hidden",
+        background: "#e5e7eb",
+        position: "relative",
       }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 12,
-          marginBottom: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h2 style={{ marginTop: 0, marginBottom: 8, color: "#0f172a" }}>Map</h2>
-          <p style={{ marginTop: 0, marginBottom: 0, color: "#475569" }}>
-            Mappable events in current view: {events.length}
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <label
-            htmlFor="map-style-select"
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#334155",
-              textTransform: "uppercase",
-              letterSpacing: 0.4,
-            }}
-          >
-            Map style
-          </label>
-          <select
-            id="map-style-select"
-            value={mapStyle}
-            onChange={(e) => setMapStyle(e.target.value)}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#0f172a",
-              fontSize: 14,
-            }}
-          >
-            {MAP_STYLE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: standalone ? "calc(100vh - 270px)" : 700,
-          minHeight: standalone ? 820 : 700,
-          borderRadius: 8,
-          overflow: "hidden",
-          background: "#e5e7eb",
-          position: "relative",
-        }}
-      />
-    </div>
+    />
+  </div>
   );
 }
 
@@ -433,7 +341,7 @@ function formatDateRange(startIso: string, endIso: string): string {
     return `${dateFormatter.format(start)} • ${timeFormatter.format(start)} - ${timeFormatter.format(end)}`;
   }
 
-  return `${dateFormatter.format(start)} ${timeFormatter.format(start)} - ${timeFormatter.format(
+  return `${dateFormatter.format(start)} ${timeFormatter.format(start)} - ${dateFormatter.format(
     end
   )} ${timeFormatter.format(end)}`;
 }
