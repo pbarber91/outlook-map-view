@@ -42,6 +42,10 @@ type GraphEvent = {
     joinUrl?: string;
   };
   onlineMeetingUrl?: string;
+  calendar?: {
+    id?: string;
+    name?: string;
+  };
 };
 
 type GraphCalendarViewResponse = {
@@ -150,7 +154,17 @@ function extractRequiredTechnicians(event: GraphEvent): string[] {
   return technicians;
 }
 
-function normalizeGraphEvent(event: GraphEvent): MappedCalendarEvent {
+function normalizeGraphEvent(
+  event: GraphEvent,
+  calendarLookup: Map<string, string>,
+  requestedCalendarId?: string
+): MappedCalendarEvent {
+  const calendarId = requestedCalendarId ?? event.calendar?.id ?? "";
+  const calendarName =
+    (calendarId && calendarLookup.get(calendarId)) ||
+    event.calendar?.name ||
+    "Calendar";
+
   return normalizeEvent(
     {
       id: event.id,
@@ -161,6 +175,8 @@ function normalizeGraphEvent(event: GraphEvent): MappedCalendarEvent {
       categories: Array.isArray(event.categories) ? event.categories : [],
       technicians: extractRequiredTechnicians(event),
       webLink: event.webLink,
+      calendarId,
+      calendarName,
     },
     crypto.randomUUID()
   );
@@ -180,6 +196,7 @@ function compareEventsByStart(a: MappedCalendarEvent, b: MappedCalendarEvent): n
 async function getCalendarViewPage(
   startIso: string,
   endIso: string,
+  calendarId?: string,
   nextLink?: string
 ): Promise<GraphCalendarViewResponse> {
   const client = await getGraphClient();
@@ -192,9 +209,13 @@ async function getCalendarViewPage(
     );
   }
 
+  const apiPath = calendarId
+    ? `/me/calendars/${encodeURIComponent(calendarId)}/calendarView`
+    : "/me/calendarView";
+
   return withTimeout(
     client
-      .api("/me/calendarView")
+      .api(apiPath)
       .query({
         startDateTime: startIso,
         endDateTime: endIso,
@@ -209,9 +230,11 @@ async function getCalendarViewPage(
   );
 }
 
-export async function getCalendarEventsForRange(
+async function getCalendarEventsForSingleCalendar(
   startIso: string,
-  endIso: string
+  endIso: string,
+  calendarId: string | undefined,
+  calendarLookup: Map<string, string>
 ): Promise<MappedCalendarEvent[]> {
   const allEvents: GraphEvent[] = [];
   const seenIds = new Set<string>();
@@ -220,7 +243,7 @@ export async function getCalendarEventsForRange(
   let pageCount = 0;
 
   do {
-    const response = await getCalendarViewPage(startIso, endIso, nextLink);
+    const response = await getCalendarViewPage(startIso, endIso, calendarId, nextLink);
     const pageEvents = Array.isArray(response?.value) ? response.value : [];
 
     for (const event of pageEvents) {
@@ -253,5 +276,44 @@ export async function getCalendarEventsForRange(
     }
   } while (nextLink);
 
-  return allEvents.map(normalizeGraphEvent).sort(compareEventsByStart);
+  return allEvents
+    .map((event) => normalizeGraphEvent(event, calendarLookup, calendarId))
+    .sort(compareEventsByStart);
+}
+
+export async function getCalendarEventsForRange(
+  startIso: string,
+  endIso: string,
+  calendarIds: string[] = []
+): Promise<MappedCalendarEvent[]> {
+  const normalizedCalendarIds = Array.from(
+    new Set(calendarIds.map((id) => id.trim()).filter(Boolean))
+  );
+
+  const calendarLookup = new Map<string, string>();
+
+  if (normalizedCalendarIds.length === 0) {
+    return getCalendarEventsForSingleCalendar(startIso, endIso, undefined, calendarLookup);
+  }
+
+  const results = await Promise.all(
+    normalizedCalendarIds.map((calendarId) =>
+      getCalendarEventsForSingleCalendar(startIso, endIso, calendarId, calendarLookup)
+    )
+  );
+
+  const merged = results.flat();
+  const seen = new Set<string>();
+  const deduped: MappedCalendarEvent[] = [];
+
+  for (const event of merged) {
+    const key = event.id || `${event.subject}-${event.startIso}-${event.calendarName}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(event);
+  }
+
+  return deduped.sort(compareEventsByStart);
 }

@@ -54,14 +54,17 @@ export function useCalendarEvents(filters: FilterState, refreshKey: number) {
       try {
         const range = getDateRange(filters.preset, filters.startDate, filters.endDate);
 
-        const selectedCalendars = availableCalendars.filter(
-          (calendar) =>
-            filters.calendarIds.length === 0 || filters.calendarIds.includes(calendar.id)
-        );
+        const selectedCalendarIds =
+          filters.calendarIds.length > 0
+            ? filters.calendarIds
+            : availableCalendars
+                .filter((calendar) => calendar.isDefaultCalendar)
+                .map((calendar) => calendar.id);
 
         const result = await getCalendarEventsForRange(
           range.startIso,
           range.endIso,
+          selectedCalendarIds
         );
 
         if (!active) return;

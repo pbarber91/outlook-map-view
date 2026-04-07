@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
+  xsi:type="MailApp">
+
+  <Id>eee92cf1-af83-4fe5-ba2a-7d6c4231f4c2</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Outlook Map View V1</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+
+  <DisplayName DefaultValue="Outlook Map View"/>
+  <Description DefaultValue="Visualize Outlook calendar events on a map with route previews."/>
+
+  <IconUrl DefaultValue="https://outlook-map-view.vercel.app/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://outlook-map-view.vercel.app/assets/icon-80.png"/>
+  <SupportUrl DefaultValue="https://outlook-map-view.vercel.app"/>
+
+  <AppDomains>
+    <AppDomain>https://outlook-map-view.vercel.app</AppDomain>
+    <AppDomain>https://login.microsoftonline.com</AppDomain>
+    <AppDomain>https://graph.microsoft.com</AppDomain>
+    <AppDomain>https://api.mapbox.com</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Mailbox"/>
+  </Hosts>
+
+  <Requirements>
+    <Sets DefaultMinVersion="1.8">
+      <Set Name="Mailbox"/>
+    </Sets>
+  </Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemEdit">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://outlook-map-view.vercel.app/taskpane.html"/>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <Permissions>ReadWriteMailbox</Permissions>
+
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit"/>
+    <Rule xsi:type="ItemIs" ItemType="Appointment" FormType="Edit"/>
+  </Rule>
+
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <VersionOverrides
+    xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+    xsi:type="VersionOverridesV1_0">
+
+    <VersionOverrides
+      xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1"
+      xsi:type="VersionOverridesV1_1">
+
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.8">
+          <bt:Set Name="Mailbox"/>
+        </bt:Sets>
+      </Requirements>
+
+      <Hosts>
+        <Host xsi:type="MailHost">
+          <DesktopFormFactor>
+            <FunctionFile resid="Commands.Url"/>
+
+            <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="msgComposeGroup">
+                  <Label resid="Group.Label"/>
+                  <Control xsi:type="Button" id="msgComposeOpenPaneButton">
+                    <Label resid="OpenPane.Label"/>
+                    <Supertip>
+                      <Title resid="OpenPane.Label"/>
+                      <Description resid="OpenPane.Description"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="Taskpane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
+            <ExtensionPoint xsi:type="AppointmentOrganizerCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="apptComposeGroup">
+                  <Label resid="Group.Label"/>
+                  <Control xsi:type="Button" id="apptComposeOpenPaneButton">
+                    <Label resid="OpenPane.Label"/>
+                    <Supertip>
+                      <Title resid="OpenPane.Label"/>
+                      <Description resid="OpenPane.Description"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="Taskpane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+
+      <Resources>
+        <bt:Images>
+          <bt:Image id="Icon.16" DefaultValue="https://outlook-map-view.vercel.app/assets/icon-16.png"/>
+          <bt:Image id="Icon.32" DefaultValue="https://outlook-map-view.vercel.app/assets/icon-32.png"/>
+          <bt:Image id="Icon.80" DefaultValue="https://outlook-map-view.vercel.app/assets/icon-80.png"/>
+        </bt:Images>
+
+        <bt:Urls>
+          <bt:Url id="Commands.Url" DefaultValue="https://outlook-map-view.vercel.app/commands.html"/>
+          <bt:Url id="Taskpane.Url" DefaultValue="https://outlook-map-view.vercel.app/taskpane.html"/>
+        </bt:Urls>
+
+        <bt:ShortStrings>
+          <bt:String id="Group.Label" DefaultValue="Outlook Map View"/>
+          <bt:String id="OpenPane.Label" DefaultValue="Open Map View"/>
+        </bt:ShortStrings>
+
+        <bt:LongStrings>
+          <bt:String id="OpenPane.Description" DefaultValue="Open the Outlook Map View task pane."/>
+        </bt:LongStrings>
+      </Resources>
+
+    </VersionOverrides>
+  </VersionOverrides>
+</OfficeApp>
