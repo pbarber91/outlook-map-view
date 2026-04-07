@@ -3,20 +3,17 @@ import { DatePreset, FilterState } from "../types/filters";
 import { CalendarSource } from "../types/calendar";
 import { getCategoryColor } from "../utils/categoryColors";
 
-type ThemeMode = "light" | "dark";
-
 type FilterBarProps = {
   filters: FilterState;
   availableCategories: string[];
   availableTechnicians: string[];
-  availableCalendars?: CalendarSource[];
+  availableCalendars: CalendarSource[];
   onPresetChange: (preset: DatePreset) => void;
   onCustomDateChange: (field: "startDate" | "endDate", value: string) => void;
   onCategoriesChange: (categories: string[]) => void;
   onTechniciansChange: (technicians: string[]) => void;
-  onCalendarIdsChange?: (calendarIds: string[]) => void;
+  onCalendarIdsChange: (calendarIds: string[]) => void;
   onRefresh: () => void;
-  themeMode?: ThemeMode;
 };
 
 const presetOptions: Array<{ value: DatePreset; label: string }> = [
@@ -26,63 +23,18 @@ const presetOptions: Array<{ value: DatePreset; label: string }> = [
   { value: "custom", label: "Custom" },
 ];
 
-function getTheme(mode: ThemeMode) {
-  if (mode === "dark") {
-    return {
-      panelBg: "#111827",
-      inputBg: "#0f172a",
-      border: "#334155",
-      borderSoft: "#475569",
-      text: "#f8fafc",
-      muted: "#94a3b8",
-      sectionLabel: "#cbd5e1",
-      emptyBg: "#0f172a",
-      emptyText: "#94a3b8",
-      chipBg: "#111827",
-      chipText: "#cbd5e1",
-      chipBorder: "#475569",
-      techActiveBg: "rgba(59,130,246,0.18)",
-      techActiveBorder: "#60a5fa",
-      techActiveText: "#bfdbfe",
-      buttonShadow: "0 1px 2px rgba(15, 23, 42, 0.45)",
-    };
-  }
-
-  return {
-    panelBg: "#ffffff",
-    inputBg: "#ffffff",
-    border: "#dbe2ea",
-    borderSoft: "#cbd5e1",
-    text: "#0f172a",
-    muted: "#64748b",
-    sectionLabel: "#475569",
-    emptyBg: "#f8fafc",
-    emptyText: "#64748b",
-    chipBg: "#ffffff",
-    chipText: "#334155",
-    chipBorder: "#d1d5db",
-    techActiveBg: "#dbeafe",
-    techActiveBorder: "#93c5fd",
-    techActiveText: "#1d4ed8",
-    buttonShadow: "0 1px 2px rgba(37,99,235,0.18)",
-  };
-}
-
 export default function FilterBar({
   filters,
   availableCategories,
   availableTechnicians,
-  availableCalendars = [],
+  availableCalendars,
   onPresetChange,
   onCustomDateChange,
   onCategoriesChange,
   onTechniciansChange,
   onCalendarIdsChange,
   onRefresh,
-  themeMode = "light",
 }: FilterBarProps) {
-  const theme = getTheme(themeMode);
-
   const handleCategoryToggle = (category: string) => {
     const exists = filters.categories.includes(category);
 
@@ -106,27 +58,24 @@ export default function FilterBar({
   };
 
   const handleCalendarToggle = (calendarId: string) => {
-    if (!onCalendarIdsChange) return;
-
-    const existingIds = filters.calendarIds ?? [];
-    const exists = existingIds.includes(calendarId);
+    const exists = filters.calendarIds.includes(calendarId);
 
     if (exists) {
-      onCalendarIdsChange(existingIds.filter((id) => id !== calendarId));
+      onCalendarIdsChange(filters.calendarIds.filter((id) => id !== calendarId));
       return;
     }
 
-    onCalendarIdsChange([...existingIds, calendarId]);
+    onCalendarIdsChange([...filters.calendarIds, calendarId]);
   };
 
   return (
     <div
       style={{
-        background: theme.panelBg,
-        border: `1px solid ${theme.border}`,
+        background: "#ffffff",
+        border: "1px solid #dbe2ea",
         borderRadius: 16,
         padding: 16,
-        boxShadow: themeMode === "dark" ? "0 10px 30px rgba(2, 6, 23, 0.28)" : "0 1px 2px rgba(0,0,0,0.04)",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
       }}
     >
       <div
@@ -143,7 +92,7 @@ export default function FilterBar({
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: theme.sectionLabel,
+              color: "#475569",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
             }}
@@ -156,11 +105,11 @@ export default function FilterBar({
             onChange={(e) => onPresetChange(e.target.value as DatePreset)}
             style={{
               height: 40,
-              border: `1px solid ${theme.borderSoft}`,
+              border: "1px solid #cbd5e1",
               borderRadius: 10,
               padding: "0 12px",
-              background: theme.inputBg,
-              color: theme.text,
+              background: "#ffffff",
+              color: "#0f172a",
               fontSize: 14,
             }}
           >
@@ -180,7 +129,7 @@ export default function FilterBar({
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: theme.sectionLabel,
+                  color: "#475569",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -194,11 +143,11 @@ export default function FilterBar({
                 onChange={(e) => onCustomDateChange("startDate", e.target.value)}
                 style={{
                   height: 40,
-                  border: `1px solid ${theme.borderSoft}`,
+                  border: "1px solid #cbd5e1",
                   borderRadius: 10,
                   padding: "0 12px",
-                  background: theme.inputBg,
-                  color: theme.text,
+                  background: "#ffffff",
+                  color: "#0f172a",
                   fontSize: 14,
                 }}
               />
@@ -210,7 +159,7 @@ export default function FilterBar({
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: theme.sectionLabel,
+                  color: "#475569",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -224,11 +173,11 @@ export default function FilterBar({
                 onChange={(e) => onCustomDateChange("endDate", e.target.value)}
                 style={{
                   height: 40,
-                  border: `1px solid ${theme.borderSoft}`,
+                  border: "1px solid #cbd5e1",
                   borderRadius: 10,
                   padding: "0 12px",
-                  background: theme.inputBg,
-                  color: theme.text,
+                  background: "#ffffff",
+                  color: "#0f172a",
                   fontSize: 14,
                 }}
               />
@@ -257,7 +206,7 @@ export default function FilterBar({
               fontSize: 14,
               fontWeight: 700,
               cursor: "pointer",
-              boxShadow: theme.buttonShadow,
+              boxShadow: "0 1px 2px rgba(37,99,235,0.18)",
             }}
           >
             Refresh
@@ -265,24 +214,38 @@ export default function FilterBar({
         </div>
       </div>
 
-      {availableCalendars.length > 0 ? (
-        <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#475569",
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+            marginBottom: 8,
+          }}
+        >
+          Calendars
+        </div>
+
+        {availableCalendars.length === 0 ? (
           <div
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: theme.sectionLabel,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-              marginBottom: 8,
+              fontSize: 13,
+              color: "#64748b",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
+              borderRadius: 10,
+              padding: "10px 12px",
+              marginBottom: 14,
             }}
           >
-            Calendars
+            No accessible calendars found.
           </div>
-
+        ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
             {availableCalendars.map((calendar) => {
-              const active = (filters.calendarIds ?? []).includes(calendar.id);
+              const active = filters.calendarIds.includes(calendar.id);
 
               return (
                 <button
@@ -295,9 +258,9 @@ export default function FilterBar({
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    border: active ? "1px solid #93c5fd" : `1px solid ${theme.chipBorder}`,
-                    background: active ? (themeMode === "dark" ? "rgba(59,130,246,0.18)" : "#dbeafe") : theme.chipBg,
-                    color: active ? (themeMode === "dark" ? "#bfdbfe" : "#1d4ed8") : theme.chipText,
+                    border: active ? "1px solid #93c5fd" : "1px solid #d1d5db",
+                    background: active ? "#dbeafe" : "#ffffff",
+                    color: active ? "#1d4ed8" : "#334155",
                     boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
                   }}
                 >
@@ -307,15 +270,13 @@ export default function FilterBar({
               );
             })}
           </div>
-        </div>
-      ) : null}
+        )}
 
-      <div style={{ marginTop: availableCalendars.length > 0 ? 0 : 16 }}>
         <div
           style={{
             fontSize: 12,
             fontWeight: 700,
-            color: theme.sectionLabel,
+            color: "#475569",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
             marginBottom: 8,
@@ -328,9 +289,9 @@ export default function FilterBar({
           <div
             style={{
               fontSize: 13,
-              color: theme.emptyText,
-              background: theme.emptyBg,
-              border: `1px dashed ${theme.borderSoft}`,
+              color: "#64748b",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
               borderRadius: 10,
               padding: "10px 12px",
               marginBottom: 14,
@@ -354,9 +315,9 @@ export default function FilterBar({
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    border: active ? `1px solid ${theme.techActiveBorder}` : `1px solid ${theme.chipBorder}`,
-                    background: active ? theme.techActiveBg : theme.chipBg,
-                    color: active ? theme.techActiveText : theme.chipText,
+                    border: active ? "1px solid #93c5fd" : "1px solid #d1d5db",
+                    background: active ? "#dbeafe" : "#ffffff",
+                    color: active ? "#1d4ed8" : "#334155",
                     boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
                   }}
                 >
@@ -371,7 +332,7 @@ export default function FilterBar({
           style={{
             fontSize: 12,
             fontWeight: 700,
-            color: theme.sectionLabel,
+            color: "#475569",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
             marginBottom: 8,
@@ -384,9 +345,9 @@ export default function FilterBar({
           <div
             style={{
               fontSize: 13,
-              color: theme.emptyText,
-              background: theme.emptyBg,
-              border: `1px dashed ${theme.borderSoft}`,
+              color: "#64748b",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
               borderRadius: 10,
               padding: "10px 12px",
             }}
@@ -410,9 +371,11 @@ export default function FilterBar({
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    border: active ? `1px solid ${color.border}` : `1px solid ${theme.chipBorder}`,
-                    background: active ? color.background : theme.chipBg,
-                    color: active ? color.text : theme.chipText,
+                    border: active
+                      ? `1px solid ${color.border}`
+                      : "1px solid #d1d5db",
+                    background: active ? color.background : "#ffffff",
+                    color: active ? color.text : "#334155",
                     boxShadow: active ? "0 0 0 2px rgba(15,23,42,0.04)" : "none",
                   }}
                 >
