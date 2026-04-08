@@ -15,7 +15,6 @@ import {
   RoutePreview,
 } from "./services/routeService";
 import {
-  completeRedirectIfNeeded,
   ensureGraphAccessInteractiveRedirect,
 } from "./services/graphClient";
 
@@ -341,16 +340,6 @@ function AppContent({ standalone }: { standalone: boolean }) {
   }, [themeMode]);
 
   const theme = React.useMemo(() => getTheme(themeMode), [themeMode]);
-
-  React.useEffect(() => {
-    if (!standalone) return;
-
-    completeRedirectIfNeeded()
-      .then(() => {
-        setRefreshKey((prev) => prev + 1);
-      })
-      .catch(() => {});
-  }, [standalone]);
 
   const {
     filteredEvents,
@@ -1494,7 +1483,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                         border: `1px solid ${theme.shellBorder}`,
                         borderRadius: 12,
                         padding: 14,
-                        background: theme.panelSoftBg,
+                        background: "#fcfdff",
                       }}
                     >
                       <div style={{ fontWeight: 700, color: theme.text, marginBottom: 8 }}>{technician}</div>
@@ -1696,7 +1685,6 @@ function AppContent({ standalone }: { standalone: boolean }) {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
-                                color: theme.text,
                               }}
                             >
                               <option value="homeOffice">Home office</option>
@@ -1719,7 +1707,6 @@ function AppContent({ standalone }: { standalone: boolean }) {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
-                                color: theme.text,
                               }}
                             >
                               <option value="lastStop">End at last inspection</option>
@@ -1777,7 +1764,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                               marginTop: 10,
                               fontSize: 12,
                               color: theme.textMuted,
-                              background: theme.panelSoftBg,
+                              background: theme.appBg,
                               border: `1px solid ${theme.shellBorder}`,
                               borderRadius: 8,
                               padding: 8,
