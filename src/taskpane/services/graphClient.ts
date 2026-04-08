@@ -243,7 +243,19 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function completeRedirectIfNeeded(): Promise<void> {
-  // Popup flow uses a blank redirect page now, so there is nothing to complete here.
+  // Popup flow uses popup-complete.html, so there is no redirect page to process here.
+}
+
+export async function hasGraphSession(): Promise<boolean> {
+  const app = await initMsal();
+  const account = getPreferredAccount(app);
+
+  if (!account) {
+    return false;
+  }
+
+  app.setActiveAccount(account);
+  return true;
 }
 
 export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {

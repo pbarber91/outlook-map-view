@@ -138,7 +138,7 @@ function getDayKeyFromIso(iso: string): string | null {
 function getDefaultDayRouteSetting(): DayRouteSetting {
   return {
     startMode: "homeOffice",
-    endMode: "returnOffice",
+    endMode: "lastStop",
   };
 }
 
@@ -284,39 +284,7 @@ function buildStaticMapUrl(
     .map((event) => `pin-s+2563eb(${event.longitude},${event.latitude})`)
     .join(",");
 
-  let minLng = Infinity;
-  let maxLng = -Infinity;
-  let minLat = Infinity;
-  let maxLat = -Infinity;
-
-  events.forEach((event) => {
-    minLng = Math.min(minLng, event.longitude);
-    maxLng = Math.max(maxLng, event.longitude);
-    minLat = Math.min(minLat, event.latitude);
-    maxLat = Math.max(maxLat, event.latitude);
-  });
-
-  if (
-    !Number.isFinite(minLng) ||
-    !Number.isFinite(maxLng) ||
-    !Number.isFinite(minLat) ||
-    !Number.isFinite(maxLat)
-  ) {
-    return null;
-  }
-
-  const lngSpan = Math.max(0.12, maxLng - minLng);
-  const latSpan = Math.max(0.12, maxLat - minLat);
-
-  const lngPadding = Math.max(0.35, lngSpan * 1.35);
-  const latPadding = Math.max(0.28, latSpan * 1.35);
-
-  const west = minLng - lngPadding;
-  const south = minLat - latPadding;
-  const east = maxLng + lngPadding;
-  const north = maxLat + latPadding;
-
-  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/[${west},${south},${east},${north}]/900x460?padding=24&access_token=${encodeURIComponent(
+  return `https://api.mapbox.com/styles/v1/${STATIC_MAP_STYLE}/static/${markerOverlay}/auto/760x320?padding=36&access_token=${encodeURIComponent(
     token
   )}`;
 }
@@ -333,11 +301,7 @@ function getEndModeLabel(value: EndMode): string {
   return value === "returnOffice" ? "Return home/office" : "End at last stop";
 }
 
-export default function App() {
-  const standalone =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("standalone") === "1";
-
+function AppContent({ standalone }: { standalone: boolean }) {
   const [filters, setFilters] = React.useState<FilterState>(initialFilters);
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
   const [refreshKey, setRefreshKey] = React.useState<number>(0);
@@ -1033,17 +997,16 @@ export default function App() {
               margin: 16px 0 18px 0;
               page-break-inside: avoid;
             }
-          .snapshot {
+            .snapshot {
               width: 100%;
-              max-width: 900px;
-              max-height: 460px;
-              object-fit: contain;
+              max-width: 760px;
+              max-height: 320px;
+              object-fit: cover;
               border: 1px solid #dbe2ea;
               border-radius: 12px;
               display: block;
               margin: 0 auto;
               box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-              background: #ffffff;
             }
             .snapshot-caption {
               margin-top: 8px;
@@ -1911,6 +1874,135 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+
+export default function App() {
+  const standalone =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("standalone") === "1";
+
+  const [standaloneAuthReady, setStandaloneAuthReady] = React.useState<boolean>(() => !standalone);
+  const [authWorking, setAuthWorking] = React.useState<boolean>(false);
+  const [standaloneError, setStandaloneError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!standalone) {
+      setStandaloneAuthReady(true);
+      setStandaloneError(null);
+      return;
+    }
+
+    setStandaloneAuthReady(false);
+    setStandaloneError(null);
+  }, [standalone]);
+
+  const handleStandaloneSignIn = React.useCallback(async () => {
+    try {
+      setAuthWorking(true);
+      setStandaloneError(null);
+      await ensureGraphAccessInteractiveRedirect();
+      setStandaloneAuthReady(true);
+    } catch (error) {
+      setStandaloneError(
+        error instanceof Error ? error.message : "Microsoft 365 sign-in did not complete."
+      );
+    } finally {
+      setAuthWorking(false);
+    }
+  }, []);
+
+  if (standalone && !standaloneAuthReady) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          padding: 24,
+          fontFamily: "Arial, Helvetica, sans-serif",
+          background: "#020617",
+          color: "#f8fafc",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 760,
+            borderRadius: 18,
+            border: "1px solid #334155",
+            background: "linear-gradient(135deg, #0f172a 0%, #111827 100%)",
+            boxShadow: "0 16px 36px rgba(2, 6, 23, 0.32)",
+            padding: 24,
+          }}
+        >
+          <h1 style={{ margin: "0 0 8px 0", fontSize: 30, lineHeight: 1.1, color: "#f8fafc" }}>
+            Outlook Map View
+          </h1>
+          <p style={{ margin: "0 0 18px 0", color: "#cbd5e1", fontSize: 15 }}>
+            Standalone view needs Microsoft 365 sign-in before calendars and events can load.
+          </p>
+
+          <div
+            style={{
+              border: "1px solid #475569",
+              background: "#111827",
+              borderRadius: 14,
+              padding: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ color: "#94a3b8", fontSize: 14 }}>
+              Sign in once to continue in pop out view.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleStandaloneSignIn}
+              disabled={authWorking}
+              style={{
+                height: 40,
+                padding: "0 14px",
+                borderRadius: 10,
+                border: "1px solid #2563eb",
+                background: "#2563eb",
+                color: "#ffffff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: authWorking ? "default" : "pointer",
+                opacity: authWorking ? 0.7 : 1,
+              }}
+            >
+              {authWorking ? "Signing in..." : "Sign in to Microsoft 365"}
+            </button>
+          </div>
+
+          {standaloneError ? (
+            <div
+              style={{
+                marginTop: 14,
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #fecaca",
+                background: "#fef2f2",
+                color: "#991b1b",
+                fontSize: 14,
+              }}
+            >
+              {standaloneError}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return <AppContent standalone={standalone} />;
 }
 
 function StatChip({ label, value, themeMode }: { label: string; value: string | number; themeMode: ThemeMode }) {
