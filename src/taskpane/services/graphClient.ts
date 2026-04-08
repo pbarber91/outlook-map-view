@@ -35,6 +35,14 @@ function getTenantAuthority(): string {
   return `https://login.microsoftonline.com/${tenant}`;
 }
 
+function isStandaloneWindow(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return new URLSearchParams(window.location.search).get("standalone") === "1";
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = window.setTimeout(() => reject(new Error(message)), ms);
@@ -68,6 +76,11 @@ async function initMsal(): Promise<IPublicClientApplication> {
 }
 
 function getPreferredAccount(app: IPublicClientApplication): AccountInfo | null {
+  const active = app.getActiveAccount();
+  if (active) {
+    return active;
+  }
+
   const accounts = app.getAllAccounts();
   return accounts.length > 0 ? accounts[0] : null;
 }
@@ -84,10 +97,28 @@ function isInteractionInProgressError(error: unknown): boolean {
   );
 }
 
+function isNestedPopupError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybe = error as { errorCode?: string; message?: string };
+  return (
+    maybe.errorCode === "block_nested_popups" ||
+    maybe.message?.includes("block_nested_popups") === true
+  );
+}
+
 async function runInteractiveAuth(
   app: IPublicClientApplication,
   account?: AccountInfo | null
 ): Promise<AuthenticationResult> {
+  if (isStandaloneWindow()) {
+    throw new Error(
+      "Pop out view cannot open Microsoft sign-in in new Outlook. Sign in from the main Outlook pane first, then open Pop out view."
+    );
+  }
+
   if (interactivePromise) {
     return interactivePromise;
   }
@@ -113,15 +144,35 @@ async function runInteractiveAuth(
 export async function completeRedirectIfNeeded(): Promise<boolean> {
   const app = await initMsal();
   const account = getPreferredAccount(app);
-  return !!account;
+
+  if (account) {
+    app.setActiveAccount(account);
+    return true;
+  }
+
+  return false;
+}
+
+export async function hasGraphSession(): Promise<boolean> {
+  const app = await initMsal();
+  const account = getPreferredAccount(app);
+
+  if (account) {
+    app.setActiveAccount(account);
+    return true;
+  }
+
+  return false;
 }
 
 export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {
   const app = await initMsal();
   const existing = getPreferredAccount(app);
 
-  try {
-    if (existing) {
+  if (existing) {
+    app.setActiveAccount(existing);
+
+    try {
       await withTimeout(
         app.acquireTokenSilent({
           scopes: GRAPH_SCOPES,
@@ -131,19 +182,23 @@ export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {
         "Silent token acquisition timed out."
       );
       return;
-    }
-  } catch (error) {
-    if (!(error instanceof InteractionRequiredAuthError)) {
+    } catch (error) {
+      if (error instanceof InteractionRequiredAuthError) {
+        await runInteractiveAuth(app, existing);
+        return;
+      }
+
       if (isInteractionInProgressError(error)) {
         throw new Error(
           "Sign-in is already in progress. Finish the Microsoft sign-in window, then try again."
         );
       }
+
       throw error;
     }
   }
 
-  await runInteractiveAuth(app, existing);
+  await runInteractiveAuth(app, null);
 }
 
 async function getAccessTokenInternal(): Promise<string> {
@@ -151,6 +206,8 @@ async function getAccessTokenInternal(): Promise<string> {
   const existing = getPreferredAccount(app);
 
   if (existing) {
+    app.setActiveAccount(existing);
+
     try {
       const silentResult = await withTimeout(
         app.acquireTokenSilent({
@@ -161,11 +218,30 @@ async function getAccessTokenInternal(): Promise<string> {
         "Silent token acquisition timed out."
       );
 
+      if (silentResult.account) {
+        app.setActiveAccount(silentResult.account);
+      }
+
       return silentResult.accessToken;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
+        if (isStandaloneWindow()) {
+          throw new Error(
+            "Pop out view could not reuse your Microsoft 365 session. Sign in from the main Outlook pane first, then reopen Pop out view."
+          );
+        }
+
         const popupResult = await runInteractiveAuth(app, existing);
+        if (popupResult.account) {
+          app.setActiveAccount(popupResult.account);
+        }
         return popupResult.accessToken;
+      }
+
+      if (isNestedPopupError(error)) {
+        throw new Error(
+          "New Outlook blocks sign-in popups inside Pop out view. Sign in from the main Outlook pane first, then reopen Pop out view."
+        );
       }
 
       if (isInteractionInProgressError(error)) {
@@ -184,7 +260,17 @@ async function getAccessTokenInternal(): Promise<string> {
     }
   }
 
+  if (isStandaloneWindow()) {
+    throw new Error(
+      "Pop out view cannot start Microsoft sign-in in new Outlook. Sign in from the main Outlook pane first, then reopen Pop out view."
+    );
+  }
+
   const loginResult = await runInteractiveAuth(app, null);
+  if (loginResult.account) {
+    app.setActiveAccount(loginResult.account);
+  }
+
   if (loginResult.accessToken) {
     return loginResult.accessToken;
   }
@@ -202,6 +288,10 @@ async function getAccessTokenInternal(): Promise<string> {
     AUTH_TIMEOUT_MS,
     "Silent token acquisition timed out after sign-in."
   );
+
+  if (silentAfterLogin.account) {
+    app.setActiveAccount(silentAfterLogin.account);
+  }
 
   return silentAfterLogin.accessToken;
 }

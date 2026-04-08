@@ -709,6 +709,11 @@ export default function App() {
   }
 
   async function handleStandaloneSignIn() {
+    if (standalone) {
+      window.close();
+      return;
+    }
+
     try {
       setAuthWorking(true);
       await ensureGraphAccessInteractiveRedirect();
@@ -1179,25 +1184,25 @@ export default function App() {
               flexWrap: "wrap",
             }}
           >
-            <span>Standalone view needs Microsoft 365 sign-in to load calendars.</span>
+            <span>
+              Pop out view cannot start Microsoft 365 sign-in in new Outlook. Sign in from the main Outlook pane first, then reopen Pop out view.
+            </span>
             <button
               type="button"
               onClick={handleStandaloneSignIn}
-              disabled={authWorking}
               style={{
                 height: 38,
                 padding: "0 14px",
                 borderRadius: 10,
-                border: "1px solid #2563eb",
-                background: "#2563eb",
-                color: "#ffffff",
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#0f172a",
                 fontSize: 14,
                 fontWeight: 700,
-                cursor: authWorking ? "default" : "pointer",
-                opacity: authWorking ? 0.7 : 1,
+                cursor: "pointer",
               }}
             >
-              {authWorking ? "Signing in..." : "Sign in to Microsoft 365"}
+              Close pop out
             </button>
           </div>
         ) : null}
