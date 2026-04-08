@@ -18,6 +18,7 @@ const AUTH_TIMEOUT_MS = 30000;
 
 let msalInstance: IPublicClientApplication | undefined;
 let accessTokenPromise: Promise<string> | null = null;
+let interactivePromise: Promise<AuthenticationResult> | null = null;
 
 function getClientId(): string {
   return typeof __AZURE_CLIENT_ID__ === "string" && __AZURE_CLIENT_ID__.trim().length > 0
@@ -32,22 +33,6 @@ function getTenantAuthority(): string {
       : "common";
 
   return `https://login.microsoftonline.com/${tenant}`;
-}
-
-function isStandaloneWindow(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return new URLSearchParams(window.location.search).get("standalone") === "1";
-}
-
-function getStandaloneRedirectUri(): string {
-  return `${window.location.origin}/taskpane.html?standalone=1`;
-}
-
-function getPopupRedirectUri(): string {
-  return `${window.location.origin}/popup-complete.html`;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -72,7 +57,6 @@ async function initMsal(): Promise<IPublicClientApplication> {
       auth: {
         clientId: getClientId(),
         authority: getTenantAuthority(),
-        redirectUri: isStandaloneWindow() ? getStandaloneRedirectUri() : getPopupRedirectUri(),
       },
       cache: {
         cacheLocation: "localStorage",
@@ -84,11 +68,6 @@ async function initMsal(): Promise<IPublicClientApplication> {
 }
 
 function getPreferredAccount(app: IPublicClientApplication): AccountInfo | null {
-  const active = app.getActiveAccount();
-  if (active) {
-    return active;
-  }
-
   const accounts = app.getAllAccounts();
   return accounts.length > 0 ? accounts[0] : null;
 }
@@ -105,89 +84,73 @@ function isInteractionInProgressError(error: unknown): boolean {
   );
 }
 
-export async function completeRedirectIfNeeded(): Promise<boolean> {
-  const app = await initMsal();
-
-  const result = await app.handleRedirectPromise();
-  if (result?.account) {
-    app.setActiveAccount(result.account);
+async function runInteractiveAuth(
+  app: IPublicClientApplication,
+  account?: AccountInfo | null
+): Promise<AuthenticationResult> {
+  if (interactivePromise) {
+    return interactivePromise;
   }
 
-  const account = getPreferredAccount(app);
-  if (account) {
-    app.setActiveAccount(account);
-    return true;
-  }
-
-  return false;
-}
-
-async function getAccessTokenViaPopup(app: IPublicClientApplication, account: AccountInfo): Promise<AuthenticationResult> {
-  return withTimeout(
-    app.acquireTokenPopup({
-      scopes: GRAPH_SCOPES,
-      account,
-      redirectUri: getPopupRedirectUri(),
-    }),
+  interactivePromise = withTimeout(
+    account
+      ? app.acquireTokenPopup({
+          scopes: GRAPH_SCOPES,
+          account,
+        })
+      : app.loginPopup({
+          scopes: GRAPH_SCOPES,
+        }),
     AUTH_TIMEOUT_MS,
     "Sign-in popup did not complete in time."
-  );
+  ).finally(() => {
+    interactivePromise = null;
+  });
+
+  return interactivePromise;
 }
 
-async function getAccessTokenViaRedirect(app: IPublicClientApplication, account?: AccountInfo): Promise<never> {
-  if (account) {
-    await app.acquireTokenRedirect({
-      scopes: GRAPH_SCOPES,
-      account,
-      redirectUri: getStandaloneRedirectUri(),
-    });
-  } else {
-    await app.loginRedirect({
-      scopes: GRAPH_SCOPES,
-      redirectUri: getStandaloneRedirectUri(),
-    });
-  }
-
-  throw new Error("Redirecting to Microsoft 365 sign-in...");
+export async function completeRedirectIfNeeded(): Promise<boolean> {
+  const app = await initMsal();
+  const account = getPreferredAccount(app);
+  return !!account;
 }
 
 export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {
   const app = await initMsal();
-  const account = getPreferredAccount(app);
+  const existing = getPreferredAccount(app);
 
-  if (account) {
-    app.setActiveAccount(account);
-
-    try {
+  try {
+    if (existing) {
       await withTimeout(
         app.acquireTokenSilent({
           scopes: GRAPH_SCOPES,
-          account,
+          account: existing,
         }),
         AUTH_TIMEOUT_MS,
         "Silent token acquisition timed out."
       );
       return;
-    } catch (error) {
-      if (error instanceof InteractionRequiredAuthError) {
-        await getAccessTokenViaRedirect(app, account);
-        return;
+    }
+  } catch (error) {
+    if (!(error instanceof InteractionRequiredAuthError)) {
+      if (isInteractionInProgressError(error)) {
+        throw new Error(
+          "Sign-in is already in progress. Finish the Microsoft sign-in window, then try again."
+        );
       }
-
       throw error;
     }
   }
 
-  await getAccessTokenViaRedirect(app);
+  await runInteractiveAuth(app, existing);
 }
 
 async function getAccessTokenInternal(): Promise<string> {
   const app = await initMsal();
-
   const existing = getPreferredAccount(app);
-  if (existing) {
-    app.setActiveAccount(existing);
 
+  if (existing) {
     try {
       const silentResult = await withTimeout(
         app.acquireTokenSilent({
@@ -198,50 +161,49 @@ async function getAccessTokenInternal(): Promise<string> {
         "Silent token acquisition timed out."
       );
 
-      if (silentResult.account) {
-        app.setActiveAccount(silentResult.account);
-      }
-
       return silentResult.accessToken;
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
-        if (isStandaloneWindow()) {
-          await getAccessTokenViaRedirect(app, existing);
-        }
-
-        const popupResult = await getAccessTokenViaPopup(app, existing);
-        if (popupResult.account) {
-          app.setActiveAccount(popupResult.account);
-        }
+        const popupResult = await runInteractiveAuth(app, existing);
         return popupResult.accessToken;
       }
 
       if (isInteractionInProgressError(error)) {
-        throw new Error("Sign-in is already in progress. Finish the Microsoft sign-in window, then try again.");
+        throw new Error(
+          "Sign-in is already in progress. Finish the Microsoft sign-in window, then try again."
+        );
+      }
+
+      if (error instanceof BrowserAuthError && error.errorCode === "interaction_in_progress") {
+        throw new Error(
+          "Sign-in is already in progress. Finish the Microsoft sign-in window, then try again."
+        );
       }
 
       throw error;
     }
   }
 
-  if (isStandaloneWindow()) {
-    await getAccessTokenViaRedirect(app);
+  const loginResult = await runInteractiveAuth(app, null);
+  if (loginResult.accessToken) {
+    return loginResult.accessToken;
   }
 
-  const loginResult = await withTimeout(
-    app.loginPopup({
+  const accountAfterLogin = getPreferredAccount(app);
+  if (!accountAfterLogin) {
+    throw new Error("Microsoft 365 sign-in completed, but no account is available.");
+  }
+
+  const silentAfterLogin = await withTimeout(
+    app.acquireTokenSilent({
       scopes: GRAPH_SCOPES,
-      redirectUri: getPopupRedirectUri(),
+      account: accountAfterLogin,
     }),
     AUTH_TIMEOUT_MS,
-    "Sign-in popup did not complete in time."
+    "Silent token acquisition timed out after sign-in."
   );
 
-  if (loginResult.account) {
-    app.setActiveAccount(loginResult.account);
-  }
-
-  return loginResult.accessToken;
+  return silentAfterLogin.accessToken;
 }
 
 async function getAccessToken(): Promise<string> {
