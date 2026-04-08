@@ -7,7 +7,7 @@
   xsi:type="MailApp">
 
   <Id>eee92cf1-af83-4fe5-ba2a-7d6c4231f4c2</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.0.0.1</Version>
   <ProviderName>Outlook Map View V1</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
@@ -48,6 +48,8 @@
   <Rule xsi:type="RuleCollection" Mode="Or">
     <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit"/>
     <Rule xsi:type="ItemIs" ItemType="Appointment" FormType="Edit"/>
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+    <Rule xsi:type="ItemIs" ItemType="Appointment" FormType="Read"/>
   </Rule>
 
   <DisableEntityHighlighting>false</DisableEntityHighlighting>
@@ -94,11 +96,57 @@
               </OfficeTab>
             </ExtensionPoint>
 
+            <ExtensionPoint xsi:type="MessageReadCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="msgReadGroup">
+                  <Label resid="Group.Label"/>
+                  <Control xsi:type="Button" id="msgReadOpenPaneButton">
+                    <Label resid="OpenPane.Label"/>
+                    <Supertip>
+                      <Title resid="OpenPane.Label"/>
+                      <Description resid="OpenPane.Description"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="Taskpane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
             <ExtensionPoint xsi:type="AppointmentOrganizerCommandSurface">
               <OfficeTab id="TabDefault">
                 <Group id="apptComposeGroup">
                   <Label resid="Group.Label"/>
                   <Control xsi:type="Button" id="apptComposeOpenPaneButton">
+                    <Label resid="OpenPane.Label"/>
+                    <Supertip>
+                      <Title resid="OpenPane.Label"/>
+                      <Description resid="OpenPane.Description"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16"/>
+                      <bt:Image size="32" resid="Icon.32"/>
+                      <bt:Image size="80" resid="Icon.80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="Taskpane.Url"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
+            <ExtensionPoint xsi:type="AppointmentAttendeeCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="apptReadGroup">
+                  <Label resid="Group.Label"/>
+                  <Control xsi:type="Button" id="apptReadOpenPaneButton">
                     <Label resid="OpenPane.Label"/>
                     <Supertip>
                       <Title resid="OpenPane.Label"/>
