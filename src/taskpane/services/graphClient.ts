@@ -38,8 +38,8 @@ function getTenantAuthority(): string {
   return `https://login.microsoftonline.com/${tenant}`;
 }
 
-function getRedirectUri(): string {
-  return `${window.location.origin}/auth.html`;
+function getPopupRedirectUri(): string {
+  return `${window.location.origin}/popup-complete.html`;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -64,7 +64,7 @@ async function initMsal(): Promise<IPublicClientApplication> {
       auth: {
         clientId: getClientId(),
         authority: getTenantAuthority(),
-        redirectUri: getRedirectUri(),
+        redirectUri: getPopupRedirectUri(),
       },
       cache: {
         cacheLocation: "localStorage",
@@ -83,24 +83,6 @@ function getPreferredAccount(app: IPublicClientApplication): AccountInfo | null 
 
   const accounts = app.getAllAccounts();
   return accounts.length > 0 ? accounts[0] : null;
-}
-
-async function completePendingRedirect(app: IPublicClientApplication): Promise<void> {
-  const redirectResult = await withTimeout(
-    app.handleRedirectPromise(),
-    AUTH_TIMEOUT_MS,
-    "Authentication redirect did not complete in time."
-  );
-
-  if (redirectResult?.account) {
-    app.setActiveAccount(redirectResult.account);
-    return;
-  }
-
-  const existing = getPreferredAccount(app);
-  if (existing) {
-    app.setActiveAccount(existing);
-  }
 }
 
 function isInteractionInProgressError(error: unknown): boolean {
@@ -130,7 +112,7 @@ async function ensureSignedIn(app: IPublicClientApplication): Promise<void> {
     const loginResult = await withTimeout(
       app.loginPopup({
         scopes: GRAPH_SCOPES,
-        redirectUri: getRedirectUri(),
+        redirectUri: getPopupRedirectUri(),
       }),
       AUTH_TIMEOUT_MS,
       "Sign-in popup did not complete in time."
@@ -148,7 +130,9 @@ async function ensureSignedIn(app: IPublicClientApplication): Promise<void> {
   }
 }
 
-async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication): Promise<AuthenticationResult> {
+async function acquireTokenSilentlyOrInteractive(
+  app: IPublicClientApplication
+): Promise<AuthenticationResult> {
   const account = getPreferredAccount(app);
 
   if (!account) {
@@ -165,7 +149,7 @@ async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication):
       app.acquireTokenSilent({
         scopes: GRAPH_SCOPES,
         account: resolvedAccount,
-        redirectUri: getRedirectUri(),
+        redirectUri: getPopupRedirectUri(),
       }),
       AUTH_TIMEOUT_MS,
       "Silent token acquisition timed out."
@@ -189,7 +173,7 @@ async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication):
       const refreshed = await withTimeout(
         app.loginPopup({
           scopes: GRAPH_SCOPES,
-          redirectUri: getRedirectUri(),
+          redirectUri: getPopupRedirectUri(),
         }),
         AUTH_TIMEOUT_MS,
         "Sign-in popup did not complete in time."
@@ -216,7 +200,7 @@ async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication):
     app.acquireTokenSilent({
       scopes: GRAPH_SCOPES,
       account: retryAccount,
-      redirectUri: getRedirectUri(),
+      redirectUri: getPopupRedirectUri(),
     }),
     AUTH_TIMEOUT_MS,
     "Silent token acquisition timed out after sign-in."
@@ -231,7 +215,6 @@ async function acquireTokenSilentlyOrInteractive(app: IPublicClientApplication):
 
 async function getAccessTokenInternal(): Promise<string> {
   const app = await initMsal();
-  await completePendingRedirect(app);
 
   try {
     const result = await acquireTokenSilentlyOrInteractive(app);
@@ -260,8 +243,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function completeRedirectIfNeeded(): Promise<void> {
-  const app = await initMsal();
-  await completePendingRedirect(app);
+  // Popup flow uses a blank redirect page now, so there is nothing to complete here.
 }
 
 export async function ensureGraphAccessInteractiveRedirect(): Promise<void> {
