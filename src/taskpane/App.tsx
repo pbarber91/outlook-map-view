@@ -15,6 +15,7 @@ import {
   RoutePreview,
 } from "./services/routeService";
 import {
+  completeRedirectIfNeeded,
   ensureGraphAccessInteractiveRedirect,
 } from "./services/graphClient";
 
@@ -137,7 +138,7 @@ function getDayKeyFromIso(iso: string): string | null {
 function getDefaultDayRouteSetting(): DayRouteSetting {
   return {
     startMode: "homeOffice",
-    endMode: "lastStop",
+    endMode: "returnOffice",
   };
 }
 
@@ -300,7 +301,11 @@ function getEndModeLabel(value: EndMode): string {
   return value === "returnOffice" ? "Return home/office" : "End at last stop";
 }
 
-function AppContent({ standalone }: { standalone: boolean }) {
+export default function App() {
+  const standalone =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("standalone") === "1";
+
   const [filters, setFilters] = React.useState<FilterState>(initialFilters);
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
   const [refreshKey, setRefreshKey] = React.useState<number>(0);
@@ -1483,7 +1488,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                         border: `1px solid ${theme.shellBorder}`,
                         borderRadius: 12,
                         padding: 14,
-                        background: "#fcfdff",
+                        background: theme.panelSoftBg,
                       }}
                     >
                       <div style={{ fontWeight: 700, color: theme.text, marginBottom: 8 }}>{technician}</div>
@@ -1685,6 +1690,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="homeOffice">Home office</option>
@@ -1707,6 +1713,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                                 border: `1px solid ${theme.borderSoft}`,
                                 padding: "0 10px",
                                 background: theme.panelBg,
+                                color: theme.text,
                               }}
                             >
                               <option value="lastStop">End at last inspection</option>
@@ -1764,7 +1771,7 @@ function AppContent({ standalone }: { standalone: boolean }) {
                               marginTop: 10,
                               fontSize: 12,
                               color: theme.textMuted,
-                              background: theme.appBg,
+                              background: theme.panelSoftBg,
                               border: `1px solid ${theme.shellBorder}`,
                               borderRadius: 8,
                               padding: 8,
@@ -1861,135 +1868,6 @@ function AppContent({ standalone }: { standalone: boolean }) {
       </div>
     </div>
   );
-}
-
-
-export default function App() {
-  const standalone =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("standalone") === "1";
-
-  const [standaloneAuthReady, setStandaloneAuthReady] = React.useState<boolean>(() => !standalone);
-  const [authWorking, setAuthWorking] = React.useState<boolean>(false);
-  const [standaloneError, setStandaloneError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!standalone) {
-      setStandaloneAuthReady(true);
-      setStandaloneError(null);
-      return;
-    }
-
-    setStandaloneAuthReady(false);
-    setStandaloneError(null);
-  }, [standalone]);
-
-  const handleStandaloneSignIn = React.useCallback(async () => {
-    try {
-      setAuthWorking(true);
-      setStandaloneError(null);
-      await ensureGraphAccessInteractiveRedirect();
-      setStandaloneAuthReady(true);
-    } catch (error) {
-      setStandaloneError(
-        error instanceof Error ? error.message : "Microsoft 365 sign-in did not complete."
-      );
-    } finally {
-      setAuthWorking(false);
-    }
-  }, []);
-
-  if (standalone && !standaloneAuthReady) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          padding: 24,
-          fontFamily: "Arial, Helvetica, sans-serif",
-          background: "#020617",
-          color: "#f8fafc",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 760,
-            borderRadius: 18,
-            border: "1px solid #334155",
-            background: "linear-gradient(135deg, #0f172a 0%, #111827 100%)",
-            boxShadow: "0 16px 36px rgba(2, 6, 23, 0.32)",
-            padding: 24,
-          }}
-        >
-          <h1 style={{ margin: "0 0 8px 0", fontSize: 30, lineHeight: 1.1, color: "#f8fafc" }}>
-            Outlook Map View
-          </h1>
-          <p style={{ margin: "0 0 18px 0", color: "#cbd5e1", fontSize: 15 }}>
-            Standalone view needs Microsoft 365 sign-in before calendars and events can load.
-          </p>
-
-          <div
-            style={{
-              border: "1px solid #475569",
-              background: "#111827",
-              borderRadius: 14,
-              padding: 16,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ color: "#94a3b8", fontSize: 14 }}>
-              Sign in once to continue in pop out view.
-            </div>
-
-            <button
-              type="button"
-              onClick={handleStandaloneSignIn}
-              disabled={authWorking}
-              style={{
-                height: 40,
-                padding: "0 14px",
-                borderRadius: 10,
-                border: "1px solid #2563eb",
-                background: "#2563eb",
-                color: "#ffffff",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: authWorking ? "default" : "pointer",
-                opacity: authWorking ? 0.7 : 1,
-              }}
-            >
-              {authWorking ? "Signing in..." : "Sign in to Microsoft 365"}
-            </button>
-          </div>
-
-          {standaloneError ? (
-            <div
-              style={{
-                marginTop: 14,
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #fecaca",
-                background: "#fef2f2",
-                color: "#991b1b",
-                fontSize: 14,
-              }}
-            >
-              {standaloneError}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  return <AppContent standalone={standalone} />;
 }
 
 function StatChip({ label, value, themeMode }: { label: string; value: string | number; themeMode: ThemeMode }) {
